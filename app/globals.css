@@ -6,16 +6,15 @@
 
 @layer base {
   :root {
-    /* --- THE LOVABLE DARK SIDEBAR COLORS --- */
-    --sidebar-background: 222 47% 11%; /* Dark Blue */
-    --sidebar-foreground: 210 20% 95%; /* White Text */
+    /* --- COLORS --- */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 20% 95%;
     --sidebar-primary: 199 89% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 47% 18%;
     --sidebar-border: 222 47% 18%;
     --sidebar-ring: 199 89% 48%;
 
-    /* Main Colors */
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
@@ -23,36 +22,52 @@
     --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
     
-    /* Utility Colors */
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 199 89% 48%;
     --radius: 0.75rem;
 
-    /* Status Colors */
     --success: 142 76% 36%;
     --warning: 38 92% 50%;
     --destructive: 0 84% 60%;
     
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
     --shadow-industrial: 0 4px 20px -4px hsl(199 89% 48% / 0.25);
   }
-}
 
-@layer base {
-  * {
-    border-color: hsl(var(--border));
+  /* --- THE GLOBAL MOBILE FIX --- */
+  html {
+    height: 100%;
+    /* Stop the 'bounce' effect on mobile */
+    overscroll-behavior: none; 
   }
+
   body {
+    /* Use dynamic viewport height to respect Android Nav Bar */
+    height: 100dvh; 
+    width: 100%;
+    /* Prevent the body itself from scrolling (we scroll inner containers) */
+    overflow: hidden; 
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: 'Inter', sans-serif;
+    /* Remove tap highlight color on mobile */
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
 @layer utilities {
   .shadow-industrial {
     box-shadow: var(--shadow-industrial);
+  }
+
+  /* Safe Area Utilities (For Notches & Home Bars) */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .h-safe-screen {
+    height: 100dvh;
   }
 }
