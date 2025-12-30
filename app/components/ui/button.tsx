@@ -15,8 +15,8 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        // Industrial variants
-        industrial: "gradient-industrial text-primary-foreground shadow-industrial hover:shadow-xl active:scale-[0.98]",
+        // Industrial variants - FIXED: Replaced 'gradient-industrial' with actual tailwind gradient classes
+        industrial: "bg-gradient-to-r from-sky-500 to-blue-600 text-primary-foreground shadow-industrial hover:shadow-xl active:scale-[0.98]",
         success: "bg-success text-success-foreground shadow-md hover:shadow-lg active:scale-[0.98]",
         warning: "bg-warning text-warning-foreground shadow-md hover:shadow-lg active:scale-[0.98]",
         // Touch-friendly variants for mobile

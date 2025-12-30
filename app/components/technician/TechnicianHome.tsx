@@ -44,7 +44,7 @@ export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
           </div>
         </div>
 
-        {/* Main Action Button */}
+        {/* Main Action Button - RESTORED TO ORIGINAL */}
         <div className="flex flex-1 items-center justify-center animate-fade-in" style={{ animationDelay: "200ms" }}>
           <Button
             onClick={onStartInspection}
