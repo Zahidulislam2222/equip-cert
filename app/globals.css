@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* --- THE LOVABLE DARK SIDEBAR COLORS --- */
+    --sidebar-background: 222 47% 11%; /* Dark Blue */
+    --sidebar-foreground: 210 20% 95%; /* White Text */
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 18%;
+    --sidebar-border: 222 47% 18%;
+    --sidebar-ring: 199 89% 48%;
+
+    /* Main Colors */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Utility Colors */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 199 89% 48%;
+    --radius: 0.75rem;
+
+    /* Status Colors */
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --destructive: 0 84% 60%;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
+    --shadow-industrial: 0 4px 20px -4px hsl(199 89% 48% / 0.25);
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .shadow-industrial {
+    box-shadow: var(--shadow-industrial);
+  }
+}
