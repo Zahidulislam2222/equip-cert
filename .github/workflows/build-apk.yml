@@ -9,13 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20  # <--- FIX IS HERE
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -26,16 +25,16 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Build Next.js Static App
+      - name: Build Next.js App
         run: npm run build
 
-      - name: Sync Capacitor for Android
+      - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build Debug APK
+      - name: Build APK
         run: cd android && ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: EquipCert-APK
