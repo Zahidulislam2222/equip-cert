@@ -14,13 +14,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 22  # <--- FINAL FIX IS HERE
+          node-version: 22
 
+      # FIXED: Updated to v4 and Java 21 to match your project requirements
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Install Dependencies
         run: npm install
@@ -36,6 +37,7 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # FIXED: Added chmod +x to fix "Permission denied"
       - name: Build APK
         run: |
           cd android
