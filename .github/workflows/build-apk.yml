@@ -14,7 +14,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20  # <--- FIX IS HERE
+          node-version: 20
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -25,8 +25,15 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      # --- FIX IS HERE: INJECT THE SECRETS ---
       - name: Build Next.js App
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
         run: npm run build
+      # ----------------------------------------
 
       - name: Sync Capacitor
         run: npx cap sync android
