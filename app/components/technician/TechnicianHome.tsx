@@ -1,8 +1,9 @@
-import { ClipboardCheck, User, HardHat, ChevronRight } from "lucide-react";
+import { ClipboardCheck, User, HardHat, ChevronRight, Sparkles, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface TechnicianHomeProps {
-  onStartInspection: () => void;
+  onStartInspection: (mode: "manual" | "ai") => void; // Updated to accept mode
 }
 
 export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
@@ -22,18 +23,18 @@ export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex flex-1 flex-col px-4 py-8">
+      <main className="flex flex-1 flex-col px-4 py-6">
         {/* Greeting Section */}
-        <div className="mb-8 animate-fade-in">
+        <div className="mb-6 animate-fade-in">
           <p className="text-sm font-medium text-muted-foreground">Good morning,</p>
           <h1 className="text-3xl font-bold text-foreground">Technician</h1>
           <p className="mt-2 text-muted-foreground">
-            Ready for your next inspection?
+            Select inspection mode:
           </p>
         </div>
 
         {/* Stats Summary */}
-        <div className="mb-8 grid grid-cols-2 gap-4 animate-fade-in" style={{ animationDelay: "100ms" }}>
+        <div className="mb-6 grid grid-cols-2 gap-4 animate-fade-in" style={{ animationDelay: "100ms" }}>
           <div className="rounded-xl bg-card p-4 shadow-sm">
             <p className="text-2xl font-bold text-foreground">12</p>
             <p className="text-sm text-muted-foreground">Today's Tasks</p>
@@ -44,48 +45,45 @@ export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
           </div>
         </div>
 
-        {/* Main Action Button - RESTORED TO ORIGINAL */}
-        <div className="flex flex-1 items-center justify-center animate-fade-in" style={{ animationDelay: "200ms" }}>
+        {/* ACTION BUTTONS (The New Split UI) */}
+        <div className="flex flex-1 flex-col gap-4 animate-fade-in" style={{ animationDelay: "200ms" }}>
+          
+          {/* 1. Manual Mode (The Expert Button) */}
           <Button
-            onClick={onStartInspection}
-            className="group flex h-48 w-full max-w-sm flex-col items-center justify-center gap-4 rounded-3xl animate-pulse-glow"
-            variant="industrial"
-            size="xl"
+            onClick={() => onStartInspection("manual")}
+            className="group flex h-32 w-full items-center justify-between px-8 rounded-3xl shadow-sm hover:shadow-md transition-all border-2 border-transparent"
+            variant="industrial" // Keep yellow for manual
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-foreground/20 transition-transform duration-300 group-hover:scale-110">
-              <ClipboardCheck className="h-10 w-10" />
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 group-hover:scale-110 transition-transform">
+                <ClipboardCheck className="h-8 w-8" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-xl font-bold">Manual Check</h3>
+                <p className="text-sm opacity-80 font-medium">Quick List</p>
+              </div>
             </div>
-            <span className="text-xl font-bold">Start New Inspection</span>
+            <ChevronRight className="h-6 w-6 opacity-60" />
           </Button>
-        </div>
 
-        {/* Recent Activity */}
-        <div className="mt-8 animate-fade-in" style={{ animationDelay: "300ms" }}>
-          <h2 className="mb-4 text-lg font-semibold text-foreground">
-            Recent Activity
-          </h2>
-          <div className="space-y-3">
-            {[
-              { name: "Caterpillar X500", time: "2h ago", status: "completed" },
-              { name: "Komatsu D65PX", time: "4h ago", status: "completed" },
-            ].map((item, index) => (
-              <button
-                key={index}
-                className="flex w-full items-center justify-between rounded-xl bg-card p-4 shadow-sm transition-all active:scale-[0.98]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success-bg">
-                    <ClipboardCheck className="h-6 w-6 text-success" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-foreground">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">{item.time}</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
-            ))}
-          </div>
+          {/* 2. AI Mode (The Smart Button) */}
+          <Button
+            onClick={() => onStartInspection("ai")}
+            className="group flex h-32 w-full items-center justify-between px-8 rounded-3xl shadow-sm hover:shadow-md transition-all bg-white border-2 border-blue-100 hover:border-blue-300 text-blue-900"
+            variant="outline" // Clean look for AI
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform">
+                <Sparkles className="h-8 w-8" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-xl font-bold">AI Guided</h3>
+                <p className="text-sm text-blue-600/80 font-medium">Auto-Identify</p>
+              </div>
+            </div>
+            <ChevronRight className="h-6 w-6 text-blue-300" />
+          </Button>
+
         </div>
       </main>
 

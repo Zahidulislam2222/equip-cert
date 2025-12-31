@@ -8,6 +8,12 @@ type View = "home" | "inspection" | "complete";
 
 export function TechnicianFlow() {
   const [view, setView] = useState<View>("home");
+  const [isAiMode, setIsAiMode] = useState(false); // <--- New State
+
+  const handleStart = (mode: "manual" | "ai") => {
+    setIsAiMode(mode === "ai");
+    setView("inspection");
+  };
 
   if (view === "complete") {
     return (
@@ -20,9 +26,8 @@ export function TechnicianFlow() {
             Inspection Complete!
           </h1>
           <p className="mb-8 text-muted-foreground">
-            Report has been submitted and signed.
+            Report has been submitted to HQ.
           </p>
-          {/* FIX: Changed variant to 'default' so it is solid Blue */}
           <Button
             onClick={() => setView("home")}
             variant="default" 
@@ -39,11 +44,12 @@ export function TechnicianFlow() {
   if (view === "inspection") {
     return (
       <InspectionScreen
+        isAiMode={isAiMode} // <--- Passing the mode
         onBack={() => setView("home")}
         onComplete={() => setView("complete")}
       />
     );
   }
 
-  return <TechnicianHome onStartInspection={() => setView("inspection")} />;
+  return <TechnicianHome onStartInspection={handleStart} />;
 }

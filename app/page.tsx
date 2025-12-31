@@ -1,21 +1,25 @@
-'use client'; // This page is now interactive
+'use client';
 
-import { useState } from "react";
-
-// --- Import all the necessary components ---
-import { ManagerDashboard } from "@/components/dashboard/ManagerDashboard"; // We will create this next
-import { TechnicianFlow } from "@/components/technician/TechnicianFlow";
-import { useIsMobile } from "@/hooks/use-mobile"; // The hook we just created
+import { defineCustomElements } from '@ionic/pwa-elements/loader';
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Monitor, Smartphone } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-// --- Create the missing ManagerDashboard component ---
-// Lovable split this into a separate file, but we can combine it for simplicity.
+// --- IMPORTS ---
+// We use { } because ManagerSidebar uses "export function" (Named Export)
+import { ManagerSidebar } from "@/components/dashboard/ManagerSidebar";
+import { TechnicianFlow } from "@/components/technician/TechnicianFlow";
+
+// ⚠️ IMPORTANT CHECK:
+// If the build fails on these two lines, it means these files use "export default".
+// If that happens, change these lines to: import StatsCards from "...";
+import { StatsCards } from "@/components/dashboard/StatsCards";
+import { InspectionsTable } from "@/components/dashboard/InspectionsTable";
+
+// --- Internal Component ---
 function ManagerDashboardComponent() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const { ManagerSidebar } = require("@/components/dashboard/ManagerSidebar");
-  const { StatsCards } = require("@/components/dashboard/StatsCards");
-  const { InspectionsTable } = require("@/components/dashboard/InspectionsTable");
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -26,6 +30,7 @@ function ManagerDashboardComponent() {
           <p className="text-gray-500">Overview of your fleet's safety compliance</p>
         </header>
         <div className="space-y-8">
+          {/* These components are now properly imported at the top */}
           <StatsCards />
           <InspectionsTable />
         </div>
@@ -34,22 +39,27 @@ function ManagerDashboardComponent() {
   );
 }
 
-
 export default function IndexPage() {
   const isMobile = useIsMobile();
-  // State to manually switch between views
   const [forceView, setForceView] = useState<"auto" | "manager" | "technician">("auto");
+  const [showManager, setShowManager] = useState(true);
 
-  // Logic to decide which view to show
-  const showManager = forceView === "manager" || (forceView === "auto" && !isMobile);
+  useEffect(() => {
+    const shouldShowManager = forceView === "manager" || (forceView === "auto" && !isMobile);
+    setShowManager(shouldShowManager);
+  }, [forceView, isMobile]);
+
+// Initialize the Web Camera UI (for Laptop testing)
+useEffect(() => {
+  defineCustomElements(window);
+}, []);
 
   return (
     <>
-      {/* View Toggle Buttons */}
       <div className="fixed bottom-4 right-4 z-50 flex gap-2 animate-fade-in">
         <Button
           onClick={() => setForceView("manager")}
-          variant={showManager ? "industrial" : "outline"}
+          variant={showManager ? "default" : "outline"}
           size="sm"
           className="shadow-lg"
         >
@@ -58,7 +68,7 @@ export default function IndexPage() {
         </Button>
         <Button
           onClick={() => setForceView("technician")}
-          variant={!showManager ? "industrial" : "outline"}
+          variant={!showManager ? "default" : "outline"}
           size="sm"
           className="shadow-lg"
         >
@@ -67,8 +77,7 @@ export default function IndexPage() {
         </Button>
       </div>
 
-      {/* Main Content Switcher */}
       {showManager ? <ManagerDashboardComponent /> : <TechnicianFlow />}
     </>
   );
-};
+}
