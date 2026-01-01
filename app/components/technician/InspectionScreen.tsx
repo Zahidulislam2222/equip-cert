@@ -103,40 +103,50 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
     }
   }, [isAiMode]);
 
-  // --- 3. AI ANALYSIS FUNCTION ---
-  const analyzeWithAI = async (blob: Blob) => {
-    setIsAnalyzing(true);
-    try {
-      const formData = new FormData();
-      formData.append("image", blob);
+ // --- 3. AI ANALYSIS FUNCTION (Updated for Vercel) ---
+ const analyzeWithAI = async (blob: Blob) => {
+  setIsAnalyzing(true);
+  try {
+    // Convert Blob to Base64
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = async () => {
+      const base64data = reader.result?.toString().split(',')[1]; // Remove the "data:image/jpeg;base64," part
 
-      // Call your Next.js API Route
+      // Call your NEW Vercel API Route
       const response = await fetch("/api/analyze", {
         method: "POST",
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: base64data,
+          mimeType: blob.type
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`API failed with status ${response.status}`);
+      }
 
       const data = await response.json();
       console.log("🤖 AI Response:", data);
 
       if (data.equipmentName) {
-        setEquipmentName(data.equipmentName); // e.g., "Caterpillar X500"
-        
-        // Now fetch the real rules for this identified equipment
+        setEquipmentName(data.equipmentName);
         await fetchChecklistFromContentful(data.equipmentName);
       } else {
-        alert("AI could not identify the equipment. Switching to manual.");
-        setEquipmentName("Manual Override");
-        fetchChecklistFromContentful("Manual");
+        throw new Error("AI did not return equipment name.");
       }
+    };
 
-    } catch (error) {
-      console.error("AI API Error:", error);
-      alert("AI Service Unavailable. Check API Key.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+  } catch (error) {
+    console.error("AI API Error:", error);
+    alert("AI Service Unavailable. Check API Key.");
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   // --- 4. CAMERA LOGIC ---
   const takePhoto = async () => {
