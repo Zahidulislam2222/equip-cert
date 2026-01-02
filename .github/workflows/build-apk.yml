@@ -9,14 +9,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # FIXED: Updated to v4 and Java 21 to match your project requirements
+      # Using Java 21 to match your project settings
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -28,16 +28,17 @@ jobs:
 
       - name: Build Next.js App
         env:
+          # CRITICAL FIX: These names on the LEFT must match your .env.local exactly
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_ACCESS_TOKEN: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+          NEXT_PUBLIC_CONTENTFUL_SPACE_ID: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_SPACE_ID }}
+          NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN }}
+          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
         run: npm run build
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # FIXED: Added chmod +x to fix "Permission denied"
       - name: Build APK
         run: |
           cd android
