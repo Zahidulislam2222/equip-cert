@@ -56,7 +56,7 @@ export function ManagerDashboard() {
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">
-              Overview of your fleet's safety compliance
+              Overview of your fleet&apos;s safety compliance
             </p>
           </div>
 

@@ -17,6 +17,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -27,6 +28,7 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          light: "hsl(var(--primary-light))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -43,6 +45,7 @@ const config: Config = {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          light: "hsl(var(--accent-light))",
         },
         card: {
           DEFAULT: "hsl(var(--card))",
@@ -57,7 +60,6 @@ const config: Config = {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Map the custom success/warning colors from your index.css
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
@@ -67,7 +69,7 @@ const config: Config = {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
           bg: "hsl(var(--warning-bg))",
-        }
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -75,9 +77,12 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
+        sm: "var(--shadow-sm)",
+        card: "var(--shadow-card)",
+        elevated: "var(--shadow-elevated)",
         industrial: "var(--shadow-industrial)",
+        glow: "var(--shadow-glow)",
       },
-      // --- THIS IS THE MISSING PART FOR ANIMATIONS ---
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -91,25 +96,46 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "fade-out": {
-          "0%": { opacity: "1", transform: "translateY(0)" },
-          "100%": { opacity: "0", transform: "translateY(10px)" },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-in-right": {
+          "0%": { opacity: "0", transform: "translateX(20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "slide-in-left": {
+          "0%": { opacity: "0", transform: "translateX(-20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
         },
         "pulse-glow": {
-          "0%, 100%": {
-            boxShadow: "0 0 0 0 hsl(var(--primary) / 0.0)",
-          },
-          "50%": {
-            boxShadow: "0 0 20px 0 hsl(var(--primary) / 0.5)",
-          },
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(210 100% 45% / 0)" },
+          "50%": { boxShadow: "0 0 20px 0 hsl(210 100% 45% / 0.4)" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.3s ease-out forwards",
-        "fade-out": "fade-out 0.3s ease-out forwards",
+        "fade-in": "fade-in 0.4s ease-out forwards",
+        "fade-in-up": "fade-in-up 0.5s ease-out forwards",
+        "slide-in-right": "slide-in-right 0.4s ease-out forwards",
+        "slide-in-left": "slide-in-left 0.4s ease-out forwards",
+        "scale-in": "scale-in 0.3s ease-out forwards",
         "pulse-glow": "pulse-glow 2s infinite",
+        "shimmer": "shimmer 1.5s infinite",
+        "float": "float 3s ease-in-out infinite",
       },
     },
   },

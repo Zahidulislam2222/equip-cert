@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,68 +6,231 @@
 
 @layer base {
   :root {
-    /* --- COLORS --- */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 199 89% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 18%;
-    --sidebar-border: 222 47% 18%;
-    --sidebar-ring: 199 89% 48%;
+    /* === INDUSTRIAL PREMIUM PALETTE === */
 
-    --background: 210 20% 98%;
+    /* Primary — Deep Industrial Blue */
+    --primary: 210 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 210 100% 96%;
+
+    /* Accent — Safety Orange */
+    --accent: 28 100% 55%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 28 100% 96%;
+
+    /* Semantic Colors */
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+    --success-bg: 152 69% 96%;
+    --warning: 45 93% 52%;
+    --warning-foreground: 45 93% 15%;
+    --warning-bg: 45 93% 96%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Surfaces */
+    --background: 220 16% 97%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 0 0% 100%;
-    
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 199 89% 48%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 10% 46%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 222 47% 11%;
+
+    /* Chrome */
+    --border: 220 14% 90%;
+    --input: 220 14% 90%;
+    --ring: 210 100% 45%;
     --radius: 0.75rem;
 
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
-    --destructive: 0 84% 60%;
-    
-    --shadow-industrial: 0 4px 20px -4px hsl(199 89% 48% / 0.25);
+    /* Sidebar */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 210 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 18%;
+    --sidebar-border: 222 47% 18%;
+    --sidebar-ring: 210 100% 50%;
+
+    /* Elevation Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --shadow-elevated: 0 12px 40px rgba(0, 0, 0, 0.1);
+    --shadow-industrial: 0 4px 20px -4px hsl(210 100% 45% / 0.25);
+    --shadow-glow: 0 0 30px -5px hsl(210 100% 45% / 0.3);
   }
 
-  /* --- THE GLOBAL MOBILE FIX --- */
+  /* === DARK MODE === */
+  .dark {
+    --primary: 210 100% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 210 100% 10%;
+
+    --accent: 28 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 28 100% 10%;
+
+    --success: 152 69% 50%;
+    --success-bg: 152 69% 10%;
+    --warning: 45 93% 55%;
+    --warning-bg: 45 93% 10%;
+    --destructive: 0 72% 60%;
+
+    --background: 222 47% 7%;
+    --foreground: 210 20% 95%;
+    --card: 222 47% 10%;
+    --card-foreground: 210 20% 95%;
+    --muted: 222 47% 14%;
+    --muted-foreground: 220 10% 60%;
+    --secondary: 222 47% 14%;
+    --secondary-foreground: 210 20% 95%;
+
+    --border: 222 47% 18%;
+    --input: 222 47% 18%;
+    --ring: 210 100% 55%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 210 100% 55%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-border: 222 47% 12%;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-elevated: 0 12px 40px rgba(0, 0, 0, 0.4);
+    --shadow-industrial: 0 4px 20px -4px hsl(210 100% 55% / 0.3);
+    --shadow-glow: 0 0 30px -5px hsl(210 100% 55% / 0.4);
+  }
+
   html {
     height: 100%;
-    /* Stop the 'bounce' effect on mobile */
-    overscroll-behavior: none; 
+    overscroll-behavior: none;
   }
 
   body {
-    /* Use dynamic viewport height to respect Android Nav Bar */
-    height: 100dvh; 
+    height: 100dvh;
     width: 100%;
-    /* Prevent the body itself from scrolling (we scroll inner containers) */
-    overflow: hidden; 
+    overflow: hidden;
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: 'Inter', sans-serif;
-    /* Remove tap highlight color on mobile */
+    font-family: 'Inter', system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer utilities {
-  .shadow-industrial {
-    box-shadow: var(--shadow-industrial);
+  /* Shadows */
+  .shadow-sm { box-shadow: var(--shadow-sm); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-industrial { box-shadow: var(--shadow-industrial); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+
+  /* Safe Area */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .h-safe-screen { height: 100dvh; }
+
+  /* Gradient Utilities */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(210 100% 45%), hsl(210 100% 55%));
+  }
+  .gradient-accent {
+    background: linear-gradient(135deg, hsl(28 100% 50%), hsl(28 100% 60%));
+  }
+  .gradient-hero {
+    background:
+      radial-gradient(ellipse at 20% 50%, hsl(210 100% 45% / 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsl(28 100% 55% / 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, hsl(152 69% 40% / 0.04) 0%, transparent 50%);
+  }
+  .gradient-mesh {
+    background:
+      radial-gradient(at 27% 37%, hsl(210 100% 45% / 0.12) 0px, transparent 50%),
+      radial-gradient(at 97% 21%, hsl(28 100% 55% / 0.08) 0px, transparent 50%),
+      radial-gradient(at 52% 99%, hsl(152 69% 40% / 0.06) 0px, transparent 50%),
+      radial-gradient(at 10% 89%, hsl(210 100% 60% / 0.05) 0px, transparent 50%);
   }
 
-  /* Safe Area Utilities (For Notches & Home Bars) */
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom);
+  /* Text Gradient */
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(210 100% 45%), hsl(210 100% 60%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
-  .pt-safe {
-    padding-top: env(safe-area-inset-top);
+
+  /* Glass Effect */
+  .glass {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
-  .h-safe-screen {
-    height: 100dvh;
-  }
+}
+
+/* === ANIMATIONS === */
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-left {
+  0% { opacity: 0; transform: translateX(-20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(210 100% 45% / 0); }
+  50% { box-shadow: 0 0 20px 0 hsl(210 100% 45% / 0.4); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes count-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-150px) rotate(720deg); opacity: 0; }
+}
+
+/* Skeleton shimmer for loading states */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.05) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius);
 }

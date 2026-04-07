@@ -37,7 +37,7 @@ interface InspectionData {
   created_at: string;
   status: string;
   photo_url: string | null;
-  checklist_data: any[]; // The JSON array of questions
+  checklist_data: { id: string; question: string; status: string }[];
 }
 
 export const InspectionReportPDF = ({ data }: { data: InspectionData }) => (
@@ -86,7 +86,7 @@ export const InspectionReportPDF = ({ data }: { data: InspectionData }) => (
 
         {/* Table Body */}
         {data.checklist_data && Array.isArray(data.checklist_data) ? (
-          data.checklist_data.map((item: any, i: number) => (
+          data.checklist_data.map((item: { question: string; status: string }, i: number) => (
             <View key={i} style={styles.tableRow}>
               <Text style={styles.colQuestion}>{item.question}</Text>
               <Text style={[styles.colStatus, item.status === 'pass' ? styles.pass : styles.fail]}>
@@ -104,6 +104,7 @@ export const InspectionReportPDF = ({ data }: { data: InspectionData }) => (
         <View style={styles.imageSection}>
           <Text style={{ fontSize: 12, marginBottom: 5 }}>Visual Evidence:</Text>
           {/* Note: React-PDF requires 'Access-Control-Allow-Origin' on the image source */}
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <Image src={data.photo_url} style={styles.image} />
         </View>
       )}

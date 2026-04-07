@@ -30,8 +30,15 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# === SECRETS — NEVER COMMIT ===
 .env*
+!.env.example
+*.key
+*.p12
+*.keystore
+*.jks
+credentials.json
+service-account*.json
 
 # vercel
 .vercel
@@ -39,3 +46,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android build artifacts (large, regenerated)
+android/app/build/
+android/.gradle/
+android/build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Docs (local only — not for GitHub)
+*.docx
+*.doc
+*.pdf
+!EquipCert-Documentation.md

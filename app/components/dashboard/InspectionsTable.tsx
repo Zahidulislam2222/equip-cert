@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileText, ExternalLink, User, Calendar, Camera, Download, Loader2 } from "lucide-react";
+import { ExternalLink, User, Calendar, Camera, Download, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -14,7 +14,7 @@ interface Inspection {
   created_at: string;
   status: string;
   photo_url: string | null;
-  checklist_data: any[]; // <--- Added this field so we can print the questions in the PDF
+  checklist_data: { id: string; question: string; status: string }[];
 }
 
 export function InspectionsTable() {

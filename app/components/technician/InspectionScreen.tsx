@@ -54,9 +54,9 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
 
       if (response.items.length > 0) {
         // SMART FILTER: Find the checklist where the linked equipment name matches
-        const matchingEntry = response.items.find((item: any) => {
-          // FIX: We cast to 'any' here to stop the TypeScript error
-          const linkedEntry = item.fields.equipmentType as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const matchingEntry = response.items.find((item: Record<string, any>) => {
+          const linkedEntry = item.fields.equipmentType as Record<string, Record<string, string>>;
           const linkedName = linkedEntry?.fields?.name || "";
           
           return nameToSearch.toLowerCase().includes(linkedName.toLowerCase()) || 
@@ -66,21 +66,21 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
         const item = matchingEntry || response.items[0]; 
         
         if (matchingEntry) {
-            // FIX: Another cast to 'any' for logging
-            const entryName = (item.fields.equipmentType as any)?.fields?.name;
+            const entryName = (item.fields.equipmentType as Record<string, Record<string, string>>)?.fields?.name;
             console.log("✅ Match Found:", entryName);
         } else {
             console.warn("⚠️ No exact name match found. Using fallback.");
         }
 
-        const rawData = item.fields.questions as any;
-        const rawList = rawData ? (Array.isArray(rawData) ? rawData : rawData.questions || []) : [];
+        const rawData = item.fields.questions as Record<string, unknown> | unknown[];
+        const rawList = rawData ? (Array.isArray(rawData) ? rawData : (rawData as Record<string, unknown[]>).questions || []) : [];
 
         if (rawList.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const mappedItems = rawList.map((q: any, i: number) => ({
             id: (i + 1).toString(),
             question: q.text || q.question || "Unknown Question", 
-            status: "pending" as "pending" 
+            status: "pending" as const
           }));
           setChecklist(mappedItems);
         } else {
@@ -219,9 +219,9 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       if (error) throw error;
       onComplete();
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error:", err);
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
