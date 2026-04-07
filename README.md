@@ -154,10 +154,25 @@ All tables enforce **Row Level Security** — users only see data from their org
 
 | Standard | Implementation |
 |----------|---------------|
-| **OSHA 29 CFR 1926** | All required fields enforced, server-generated timestamps, competent person tracking, 5-year retention design |
-| **ESIGN Act** | Electronic signature consent, attribution (user + timestamp + device), immutable signed records |
-| **CCPA/CPRA 2026** | Privacy policy, terms of service, cookie consent with GPC signal support, data categories disclosed |
-| **SOC 2 Ready** | RBAC, encryption, audit logging, org-scoped isolation — designed for future certification |
+| **OSHA 29 CFR 1926** | All required fields enforced (equipment ID, inspector name + qualifications + job title, datetime, findings, corrective actions), server-generated timestamps, competent person tracking, 5-year retention, equipment out-of-service enforcement |
+| **ESIGN Act** | Affirmative consent checkbox before signing, attribution (user + timestamp + device), immutable signed records (DB trigger), withdrawal rights documented, paper copy request option |
+| **CCPA/CPRA 2026** | Full privacy policy (data categories, purposes, third parties, retention by type, all rights), terms of service, cookie consent with GPC signal auto-honor, opt-out disclosure |
+| **SOC 2 Ready** | RBAC, RLS data isolation, audit logging, CSP + HSTS headers, rate limiting, input validation — designed for future certification |
+
+### Security Hardening
+
+| Protection | Implementation |
+|-----------|---------------|
+| **API Authentication** | JWT verification on `/api/analyze` — unauthenticated requests rejected |
+| **Input Validation** | Zod schema on all API inputs — type, size, and format enforced |
+| **Rate Limiting** | 20 requests/hour per IP on AI endpoint |
+| **RLS (Row Level Security)** | All 8 tables scoped to organization — no cross-tenant access |
+| **Feature Gating (DB-level)** | PostgreSQL trigger enforces free plan limits — cannot bypass via DevTools |
+| **Immutable Records** | Signed inspections cannot be UPDATE'd or DELETE'd (trigger) |
+| **CSP Headers** | Content-Security-Policy, Strict-Transport-Security, X-Frame-Options DENY |
+| **Open Redirect Prevention** | Notification URLs validated (`startsWith('/')` only) |
+| **Offline Integrity** | SHA-256 hash on queued submissions — tampered data rejected on sync |
+| **Secret Protection** | `.env*`, `*.key`, `*.keystore`, `.claude/` all gitignored |
 
 ---
 
