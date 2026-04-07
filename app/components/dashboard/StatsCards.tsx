@@ -80,19 +80,18 @@ export function StatsCards() {
 
       let query = supabase
         .from('inspections')
-        .select('status', { count: 'exact' })
+        .select('status')
         .gte('created_at', startOfMonth.toISOString());
 
       if (organization) {
         query = query.eq('organization_id', organization.id);
       }
 
-      const { data, count } = await query;
+      const { data } = await query;
 
-      const total = count || 0;
+      const total = data?.length || 0;
       const failedCount = data?.filter((d) => d.status === 'Action Required').length || 0;
-      const safeCount = total - failedCount;
-      const score = total > 0 ? ((safeCount / total) * 100).toFixed(1) : '100';
+      const score = total > 0 ? (((total - failedCount) / total) * 100).toFixed(1) : '100';
 
       setStats({ total, failed: failedCount, safetyScore: score });
     } catch (err) {

@@ -55,6 +55,14 @@ export function CookieConsent() {
             Accept All
           </Button>
         </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          We do not sell your data. We honor{' '}
+          <a href="https://globalprivacycontrol.org/" target="_blank" rel="noopener noreferrer" className="underline">
+            Global Privacy Control
+          </a>{' '}
+          signals automatically.{' '}
+          <a href="/privacy" className="underline">Privacy Policy</a>
+        </p>
       </div>
     </div>
   );

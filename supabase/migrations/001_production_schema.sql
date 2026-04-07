@@ -215,9 +215,11 @@ CREATE POLICY "Users can update own profile" ON profiles
 CREATE POLICY "Allow profile creation" ON profiles
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
--- Organizations: allow creation during signup
-CREATE POLICY "Allow org creation" ON organizations
-  FOR INSERT WITH CHECK (true);
+-- Organizations: only allow creation if user has no org yet (signup flow)
+CREATE POLICY "Allow org creation during signup" ON organizations
+  FOR INSERT WITH CHECK (
+    NOT EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid())
+  );
 
 -- Equipment: org-scoped
 CREATE POLICY "Org-scoped equipment access" ON equipment
@@ -235,7 +237,6 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='inspections' AND policyname='Org-scoped inspection access') THEN
       EXECUTE 'CREATE POLICY "Org-scoped inspection access" ON inspections FOR ALL USING (
         organization_id IN (SELECT org_id FROM profiles WHERE user_id = auth.uid())
-        OR organization_id IS NULL
       )';
     END IF;
   END IF;
@@ -287,5 +288,48 @@ BEGIN
     CREATE TRIGGER enforce_signed_immutability
       BEFORE UPDATE OR DELETE ON inspections
       FOR EACH ROW EXECUTE FUNCTION prevent_signed_inspection_edit();
+  END IF;
+END $$;
+
+-- ============================================================
+-- 11. FEATURE GATING AT DB LEVEL (prevent free plan bypass)
+-- ============================================================
+
+-- Free plan: max 10 inspections per month
+CREATE OR REPLACE FUNCTION enforce_inspection_limits()
+RETURNS TRIGGER AS $$
+DECLARE
+  org_plan TEXT;
+  monthly_count INT;
+BEGIN
+  SELECT plan INTO org_plan FROM organizations WHERE id = NEW.organization_id;
+
+  IF org_plan = 'free' THEN
+    -- Check monthly inspection count
+    SELECT COUNT(*) INTO monthly_count
+    FROM inspections
+    WHERE organization_id = NEW.organization_id
+      AND created_at >= date_trunc('month', now());
+
+    IF monthly_count >= 10 THEN
+      RAISE EXCEPTION 'Free plan limit: 10 inspections per month. Upgrade to Pro for unlimited.';
+    END IF;
+
+    -- Free plan cannot use signatures
+    IF NEW.signature_url IS NOT NULL THEN
+      RAISE EXCEPTION 'Digital signatures require a Pro or Enterprise plan.';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'enforce_plan_limits') THEN
+    CREATE TRIGGER enforce_plan_limits
+      BEFORE INSERT ON inspections
+      FOR EACH ROW EXECUTE FUNCTION enforce_inspection_limits();
   END IF;
 END $$;

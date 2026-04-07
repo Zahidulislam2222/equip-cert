@@ -67,3 +67,4 @@ Desktop.ini
 *.doc
 *.pdf
 !EquipCert-Documentation.md
+.claude/

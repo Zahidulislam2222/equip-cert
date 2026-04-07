@@ -126,7 +126,8 @@ export function NotificationBell() {
                       key={n.id}
                       onClick={() => {
                         markRead(n.id);
-                        if (n.action_url) window.location.href = n.action_url;
+                        // Only allow internal redirects (prevent open redirect attack)
+                        if (n.action_url && n.action_url.startsWith('/')) window.location.href = n.action_url;
                       }}
                       className={cn(
                         'w-full text-left flex gap-3 px-4 py-3 border-b border-border/50 hover:bg-muted/50 transition-colors',

@@ -8,12 +8,14 @@ import { Pen, RotateCcw, Check } from 'lucide-react';
 interface SignaturePadProps {
   onSave: (signatureDataUrl: string) => void;
   savedSignature: string | null;
+  esignConsented?: boolean;
 }
 
-export function SignaturePad({ onSave, savedSignature }: SignaturePadProps) {
+export function SignaturePad({ onSave, savedSignature, esignConsented }: SignaturePadProps) {
   const sigRef = useRef<SignatureCanvas>(null);
   const [isEmpty, setIsEmpty] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasConsented, setHasConsented] = useState(esignConsented || false);
 
   const handleClear = () => {
     sigRef.current?.clear();
@@ -60,8 +62,29 @@ export function SignaturePad({ onSave, savedSignature }: SignaturePadProps) {
 
   return (
     <div className="space-y-3 animate-fade-in">
-      <p className="text-sm font-medium text-foreground">Sign below</p>
-      <div className="rounded-xl border-2 border-dashed border-primary/30 bg-white overflow-hidden">
+      {/* ESIGN Act consent — must be affirmative before signing */}
+      {!hasConsented && (
+        <div className="rounded-xl border border-primary/20 bg-primary-light p-4 space-y-3">
+          <p className="text-sm font-medium text-foreground">Electronic Signature Consent</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            By checking this box, you AFFIRMATIVELY CONSENT to sign this equipment inspection
+            record electronically under the ESIGN Act (15 U.S.C. &sect;7001). Your electronic
+            signature has the same legal effect as a handwritten signature. Signed records cannot
+            be modified after submission. You may withdraw consent by contacting your administrator.
+          </p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              onChange={(e) => setHasConsented(e.target.checked)}
+              className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+            />
+            <span className="text-sm font-medium text-foreground">I agree to sign electronically</span>
+          </label>
+        </div>
+      )}
+
+      {hasConsented && <p className="text-sm font-medium text-foreground">Sign below</p>}
+      {hasConsented && <div className="rounded-xl border-2 border-dashed border-primary/30 bg-white overflow-hidden">
         <SignatureCanvas
           ref={sigRef}
           canvasProps={{
@@ -74,18 +97,15 @@ export function SignaturePad({ onSave, savedSignature }: SignaturePadProps) {
           minWidth={1.5}
           maxWidth={3}
         />
-      </div>
-      <div className="flex gap-2">
+      </div>}
+      {hasConsented && <div className="flex gap-2">
         <Button type="button" variant="outline" onClick={handleClear} className="gap-2 rounded-xl flex-1">
           <RotateCcw className="h-4 w-4" /> Clear
         </Button>
         <Button type="button" onClick={handleSave} disabled={isEmpty} className="gap-2 rounded-xl flex-1">
-          <Check className="h-4 w-4" /> Confirm
+          <Check className="h-4 w-4" /> Confirm Signature
         </Button>
-      </div>
-      <p className="text-[10px] text-muted-foreground text-center">
-        By signing, you confirm this inspection under the ESIGN Act (15 U.S.C. &sect;7001).
-      </p>
+      </div>}
     </div>
   );
 }

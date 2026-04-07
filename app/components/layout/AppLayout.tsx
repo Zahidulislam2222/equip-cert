@@ -21,24 +21,25 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/shared/NotificationBell';
+import { canAccess } from '@/lib/stripe';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const managerNav = [
-  { href: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/app/inspections', label: 'Inspections', icon: ClipboardCheck },
-  { href: '/app/equipment', label: 'Equipment', icon: Wrench },
-  { href: '/app/schedule', label: 'Schedule', icon: CalendarClock },
-  { href: '/app/team', label: 'Team', icon: Users },
-  { href: '/app/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/app/settings', label: 'Settings', icon: Settings },
+  { href: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard, gate: null },
+  { href: '/app/inspections', label: 'Inspections', icon: ClipboardCheck, gate: null },
+  { href: '/app/equipment', label: 'Equipment', icon: Wrench, gate: null },
+  { href: '/app/schedule', label: 'Schedule', icon: CalendarClock, gate: 'scheduling' as const },
+  { href: '/app/team', label: 'Team', icon: Users, gate: 'team' as const },
+  { href: '/app/reports', label: 'Reports', icon: BarChart3, gate: 'reports' as const },
+  { href: '/app/settings', label: 'Settings', icon: Settings, gate: null },
 ];
 
 const technicianNav = [
-  { href: '/app/inspect', label: 'New Inspection', icon: ScanLine },
-  { href: '/app/inspections', label: 'My Inspections', icon: ClipboardCheck },
-  { href: '/app/schedule', label: 'Schedule', icon: CalendarClock },
-  { href: '/app/settings', label: 'Settings', icon: Settings },
+  { href: '/app/inspect', label: 'New Inspection', icon: ScanLine, gate: null },
+  { href: '/app/inspections', label: 'My Inspections', icon: ClipboardCheck, gate: null },
+  { href: '/app/schedule', label: 'Schedule', icon: CalendarClock, gate: 'scheduling' as const },
+  { href: '/app/settings', label: 'Settings', icon: Settings, gate: null },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -48,7 +49,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isTechnician = profile?.role === 'technician';
-  const navItems = isTechnician ? technicianNav : managerNav;
+  const orgPlan = organization?.plan || 'free';
+  const navItems = (isTechnician ? technicianNav : managerNav).filter(
+    (item) => !item.gate || canAccess(orgPlan, item.gate)
+  );
 
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-background">

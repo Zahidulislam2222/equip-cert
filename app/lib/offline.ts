@@ -31,13 +31,21 @@ export interface QueuedSubmission {
   payload: Record<string, unknown>;
   photoBlob?: Blob | null;
   timestamp: number;
+  integrityHash?: string;
+}
+
+async function computeHash(data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const buffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
+  return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export async function queueSubmission(submission: Omit<QueuedSubmission, 'id'>): Promise<void> {
+  const hash = await computeHash(JSON.stringify(submission.payload) + submission.timestamp);
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_QUEUE, 'readwrite');
-    tx.objectStore(STORE_QUEUE).add(submission);
+    tx.objectStore(STORE_QUEUE).add({ ...submission, integrityHash: hash });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -112,6 +120,16 @@ export async function syncQueuedSubmissions(
 
   for (const item of items) {
     try {
+      // Verify integrity before syncing
+      if (item.integrityHash) {
+        const expectedHash = await computeHash(JSON.stringify(item.payload) + item.timestamp);
+        if (expectedHash !== item.integrityHash) {
+          console.error(`Integrity check failed for queued item ${item.id}`);
+          failed++;
+          continue;
+        }
+      }
+
       await submitFn(item.payload, item.photoBlob);
       if (item.id) await removeFromQueue(item.id);
       synced++;

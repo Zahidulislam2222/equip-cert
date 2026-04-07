@@ -35,7 +35,7 @@ const statusConfig: Record<string, { icon: typeof AlertTriangle; color: string; 
 };
 
 export function CorrectiveActionList() {
-  const { organization } = useAuth();
+  const { organization, profile } = useAuth();
   const [actions, setActions] = useState<CorrectiveAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -68,7 +68,10 @@ export function CorrectiveActionList() {
       .from('corrective_actions')
       .update({
         status: newStatus,
-        ...(newStatus === 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
+        ...(newStatus === 'resolved' ? {
+          resolved_at: new Date().toISOString(),
+          resolved_by: profile?.id || null,
+        } : {}),
       })
       .eq('id', id);
 
