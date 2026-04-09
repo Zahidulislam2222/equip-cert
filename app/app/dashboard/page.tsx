@@ -5,12 +5,13 @@ import { InspectionsTable } from '@/components/dashboard/InspectionsTable';
 import { CorrectiveActionList } from '@/components/corrective/CorrectiveActionList';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { AlertTriangle } from 'lucide-react';
+import { MotionPage } from '@/components/motion/MotionPage';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <MotionPage className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold font-display text-foreground">
           {profile ? `Welcome back, ${profile.full_name.split(' ')[0]}` : 'Dashboard'}
@@ -40,6 +41,6 @@ export default function DashboardPage() {
           <CorrectiveActionList />
         </div>
       </div>
-    </div>
+    </MotionPage>
   );
 }

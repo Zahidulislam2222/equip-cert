@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Camera,
@@ -11,6 +12,8 @@ import {
   ScanEye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StaggerContainer, StaggerItem } from "@/components/motion/StaggerGrid";
+import { FadeInView } from "@/components/motion/FadeInView";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { contentfulClient } from "@/lib/contentful";
@@ -298,7 +301,7 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       <main className="flex-1 overflow-auto px-4 py-6 space-y-6">
 
         {/* Photo / Scan UI */}
-        <div className="animate-fade-in">
+        <FadeInView>
           <div className={cn("relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300",
             photoUrl ? "border-success bg-success-bg" : "border-muted-foreground/30 bg-muted/50",
             isAiMode && !photoUrl && "border-primary/40 bg-primary-light"
@@ -335,12 +338,12 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
               )}
             </div>
           </div>
-        </div>
+        </FadeInView>
 
         {/* GPS Capture */}
-        <div className="animate-fade-in" style={{ animationDelay: '0.05s' }}>
+        <FadeInView delay={0.05}>
           <GPSCapture onCapture={setLocation} location={location} />
-        </div>
+        </FadeInView>
 
         {/* Checklist */}
         <div className="space-y-3">
@@ -356,41 +359,52 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
               <p className="text-sm">The AI will identify it and load the correct checklist.</p>
             </div>
           ) : (
-            checklist.map((item) => (
-              <div key={item.id} className="rounded-xl bg-card p-4 shadow-sm border border-border">
-                <div className="flex items-center justify-between gap-4">
-                  <p className="flex-1 font-medium text-foreground">{item.question}</p>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => updateStatus(item.id, "pass")}
-                      variant={item.status === "pass" ? "default" : "outline"}
-                      className={cn("min-w-[72px]", item.status === "pass" && "bg-green-600 hover:bg-green-700")}
-                    >
-                      <CheckCircle className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      onClick={() => updateStatus(item.id, "fail")}
-                      variant={item.status === "fail" ? "destructive" : "outline"}
-                      className="min-w-[72px]"
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
+            <StaggerContainer className="space-y-3">
+              {checklist.map((item) => (
+                <StaggerItem key={item.id}>
+                  <div className="rounded-xl bg-card p-4 shadow-sm border border-border">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="flex-1 font-medium text-foreground">{item.question}</p>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => updateStatus(item.id, "pass")}
+                          variant={item.status === "pass" ? "default" : "outline"}
+                          className={cn("min-w-[72px]", item.status === "pass" && "bg-green-600 hover:bg-green-700")}
+                        >
+                          <CheckCircle className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          onClick={() => updateStatus(item.id, "fail")}
+                          variant={item.status === "fail" ? "destructive" : "outline"}
+                          className="min-w-[72px]"
+                        >
+                          <X className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
           )}
         </div>
 
         {/* Signature — show after checklist is complete */}
-        {allCompleted && (
-          <div className="animate-fade-in-up">
-            <SignaturePad
-              onSave={setSignatureDataUrl}
-              savedSignature={signatureDataUrl}
-            />
-          </div>
-        )}
+        <AnimatePresence>
+          {allCompleted && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            >
+              <SignaturePad
+                onSave={setSignatureDataUrl}
+                savedSignature={signatureDataUrl}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Submit Button */}

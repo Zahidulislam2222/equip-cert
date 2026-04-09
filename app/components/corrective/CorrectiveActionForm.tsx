@@ -97,8 +97,8 @@ export function CorrectiveActionForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 animate-fade-in">
-      <div className="w-full max-w-lg bg-card rounded-t-2xl sm:rounded-2xl shadow-elevated border border-border animate-fade-in-up max-h-[90vh] overflow-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg bg-card rounded-t-2xl sm:rounded-2xl shadow-elevated border border-border max-h-[90vh] overflow-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">

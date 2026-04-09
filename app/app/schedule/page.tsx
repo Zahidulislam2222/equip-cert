@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { CalendarClock, Loader2, CheckCircle, Clock, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MotionPage } from '@/components/motion/MotionPage';
+import { StaggerContainer, StaggerItem } from '@/components/motion/StaggerGrid';
 
 interface Schedule {
   id: string;
@@ -55,7 +57,7 @@ export default function SchedulePage() {
   }, [now]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <MotionPage className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Inspection Schedule</h1>
@@ -74,15 +76,15 @@ export default function SchedulePage() {
           <p className="text-sm mb-4">Create equipment first, then set up recurring inspections</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <StaggerContainer className="space-y-3">
           {schedules.map((schedule) => {
             const days = getDaysUntilDue(schedule.next_due);
             const isOverdue = days < 0;
             const isDueSoon = days >= 0 && days <= 3;
 
             return (
+              <StaggerItem key={schedule.id}>
               <div
-                key={schedule.id}
                 className={cn(
                   'rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-card',
                   isOverdue && 'border-destructive/30 bg-destructive/5',
@@ -124,10 +126,11 @@ export default function SchedulePage() {
                   )}
                 </div>
               </div>
+              </StaggerItem>
             );
           })}
-        </div>
+        </StaggerContainer>
       )}
-    </div>
+    </MotionPage>
   );
 }

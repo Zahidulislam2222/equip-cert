@@ -88,7 +88,7 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5 text-foreground" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white animate-scale-in">
+          <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -97,7 +97,7 @@ export function NotificationBell() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl border border-border bg-card shadow-elevated animate-fade-in-up overflow-hidden">
+          <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl border border-border bg-card shadow-elevated overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <h3 className="font-semibold text-foreground text-sm">Notifications</h3>
               <div className="flex gap-2">

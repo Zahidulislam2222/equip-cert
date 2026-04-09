@@ -1,10 +1,23 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { ExternalLink, User, Calendar, Camera, Download, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { pdf } from "@react-pdf/renderer"; // <--- Import PDF generator
 import { InspectionReportPDF } from "./InspectionReportPDF"; // <--- Import the PDF layout
+
+const tableBodyVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.05 },
+  },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
 
 // Define the shape of your Database Row
 interface Inspection {
@@ -77,7 +90,13 @@ export function InspectionsTable() {
   };
 
   return (
-    <div className="rounded-xl bg-card shadow-md animate-fade-in border">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+      className="rounded-xl bg-card shadow-md border"
+    >
       <div className="flex items-center justify-between border-b border-border p-6">
         <div>
           <h2 className="text-lg font-semibold text-foreground">
@@ -115,7 +134,13 @@ export function InspectionsTable() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <motion.tbody
+            className="divide-y divide-border"
+            variants={tableBodyVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-40px' }}
+          >
             {isLoading ? (
               // Simple Loading State
               <tr>
@@ -132,11 +157,11 @@ export function InspectionsTable() {
               </tr>
             ) : (
               // Real Data Mapping
-              inspections.map((inspection, index) => (
-                <tr
+              inspections.map((inspection) => (
+                <motion.tr
                   key={inspection.id}
+                  variants={rowVariants}
                   className="transition-colors hover:bg-muted/30"
-                  style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <td className="px-6 py-4">
                     <span className="font-medium text-foreground">
@@ -201,12 +226,12 @@ export function InspectionsTable() {
                         </Button>
                     </div>
                   </td>
-                </tr>
+                </motion.tr>
               ))
             )}
-          </tbody>
+          </motion.tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   );
 }

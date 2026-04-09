@@ -87,7 +87,7 @@ export function OfflineIndicator() {
 
   return (
     <div className={cn(
-      'fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-40 animate-fade-in-up',
+      'fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-40',
     )}>
       <div className={cn(
         'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium shadow-elevated',

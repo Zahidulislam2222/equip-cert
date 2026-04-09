@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { ClipboardCheck, User, HardHat, ChevronRight, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { StaggerContainer, StaggerItem } from '@/components/motion/StaggerGrid';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { config } from '@/lib/config';
@@ -64,7 +65,7 @@ export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
       {/* Main */}
       <main className="flex flex-1 flex-col px-4 py-6">
         {/* Greeting */}
-        <div className="mb-6 animate-fade-in">
+        <div className="mb-6">
           <p className="text-sm font-medium text-muted-foreground">{greeting},</p>
           <h1 className="text-3xl font-bold font-display text-foreground">
             {profile?.full_name?.split(' ')[0] || 'Technician'}
@@ -73,27 +74,32 @@ export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
         </div>
 
         {/* Stats */}
-        <div className="mb-6 grid grid-cols-2 gap-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
-          <div className="rounded-2xl bg-card border border-border p-4 shadow-card">
-            <p className="text-2xl font-bold font-display text-foreground">{todayCount}</p>
-            <p className="text-sm text-muted-foreground">Today&apos;s Tasks</p>
-          </div>
-          <div className="rounded-2xl bg-success-bg border border-success/20 p-4 shadow-card">
-            <p className="text-2xl font-bold font-display text-success">{completedCount}</p>
-            <p className="text-sm text-success/80">Completed</p>
-          </div>
-        </div>
+        <StaggerContainer className="mb-6 grid grid-cols-2 gap-4">
+          <StaggerItem>
+            <div className="rounded-2xl bg-card border border-border p-4 shadow-card">
+              <p className="text-2xl font-bold font-display text-foreground">{todayCount}</p>
+              <p className="text-sm text-muted-foreground">Today&apos;s Tasks</p>
+            </div>
+          </StaggerItem>
+          <StaggerItem>
+            <div className="rounded-2xl bg-success-bg border border-success/20 p-4 shadow-card">
+              <p className="text-2xl font-bold font-display text-success">{completedCount}</p>
+              <p className="text-sm text-success/80">Completed</p>
+            </div>
+          </StaggerItem>
+        </StaggerContainer>
 
         {/* Action Buttons */}
-        <div className="flex flex-1 flex-col gap-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
+        <div className="flex flex-1 flex-col gap-4">
           {/* Manual Mode */}
-          <Button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => onStartInspection('manual')}
-            className="group flex h-32 w-full items-center justify-between px-8 rounded-3xl shadow-card hover:shadow-elevated transition-all border-2 border-transparent"
-            variant="default"
+            className="group flex h-32 w-full items-center justify-between px-8 rounded-3xl shadow-card hover:shadow-elevated transition-shadow border-2 border-transparent gradient-primary text-primary-foreground"
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 group-hover:scale-110 transition-transform">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
                 <ClipboardCheck className="h-8 w-8" />
               </div>
               <div className="text-left">
@@ -102,16 +108,17 @@ export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
               </div>
             </div>
             <ChevronRight className="h-6 w-6 opacity-60" />
-          </Button>
+          </motion.button>
 
           {/* AI Mode */}
-          <Button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => onStartInspection('ai')}
-            className="group flex h-32 w-full items-center justify-between px-8 rounded-3xl shadow-card hover:shadow-elevated transition-all bg-card border-2 border-primary/20 hover:border-primary/50 text-foreground"
-            variant="outline"
+            className="group flex h-32 w-full items-center justify-between px-8 rounded-3xl shadow-card hover:shadow-elevated transition-shadow bg-card border-2 border-primary/20 hover:border-primary/50 text-foreground"
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <Sparkles className="h-8 w-8" />
               </div>
               <div className="text-left">
@@ -120,7 +127,7 @@ export function TechnicianHome({ onStartInspection }: TechnicianHomeProps) {
               </div>
             </div>
             <ChevronRight className="h-6 w-6 text-primary/40" />
-          </Button>
+          </motion.button>
         </div>
       </main>
 

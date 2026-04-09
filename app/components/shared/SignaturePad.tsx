@@ -61,7 +61,7 @@ export function SignaturePad({ onSave, savedSignature, esignConsented }: Signatu
   }
 
   return (
-    <div className="space-y-3 animate-fade-in">
+    <div className="space-y-3">
       {/* ESIGN Act consent — must be affirmative before signing */}
       {!hasConsented && (
         <div className="rounded-xl border border-primary/20 bg-primary-light p-4 space-y-3">

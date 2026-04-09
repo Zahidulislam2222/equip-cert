@@ -32,7 +32,7 @@ export function CookieConsent() {
   if (!show) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:max-w-md animate-fade-in-up">
+    <div className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:max-w-md">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-elevated">
         <div className="flex items-start gap-3 mb-4">
           <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />

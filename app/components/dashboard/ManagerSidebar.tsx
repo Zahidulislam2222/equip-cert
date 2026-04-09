@@ -39,7 +39,7 @@ export function ManagerSidebar({ activeTab, onTabChange }: SidebarProps) {
           <Shield className="h-6 w-6 text-primary-foreground" />
         </div>
         {!collapsed && (
-          <div className="animate-fade-in">
+          <div>
             <h1 className="text-lg font-bold text-sidebar-foreground">EquipCert</h1>
             <p className="text-xs text-sidebar-foreground/60">AI Inspector</p>
           </div>
@@ -65,7 +65,7 @@ export function ManagerSidebar({ activeTab, onTabChange }: SidebarProps) {
             >
               <Icon className="h-5 w-5 shrink-0" />
               {!collapsed && (
-                <span className="animate-fade-in">{item.label}</span>
+                <span>{item.label}</span>
               )}
             </button>
           );

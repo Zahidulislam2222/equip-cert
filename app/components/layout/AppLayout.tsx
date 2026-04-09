@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { cn } from '@/lib/utils';
 import { config } from '@/lib/config';
@@ -24,6 +25,8 @@ import { NotificationBell } from '@/components/shared/NotificationBell';
 import { canAccess } from '@/lib/stripe';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
+const sidebarSpring = { type: 'spring' as const, stiffness: 300, damping: 30 };
 
 const managerNav = [
   { href: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard, gate: null },
@@ -56,37 +59,133 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden bg-background">
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      {/* Mobile overlay + sidebar */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              key="mobile-backdrop"
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              key="mobile-sidebar"
+              className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground lg:hidden"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={sidebarSpring}
+            >
+              {/* Logo */}
+              <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
+                  <Shield className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="overflow-hidden">
+                  <h1 className="text-lg font-bold text-sidebar-foreground truncate">
+                    {organization?.name || config.app.name}
+                  </h1>
+                  <p className="text-xs text-sidebar-foreground/60">
+                    {isTechnician ? 'Technician' : 'Manager'}
+                  </p>
+                </div>
+              </div>
 
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 lg:relative',
-          collapsed ? 'w-16' : 'w-64',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+              {/* Nav */}
+              <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'relative flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-200',
+                        isActive
+                          ? 'text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="nav-active-mobile"
+                          className="absolute inset-0 rounded-lg bg-sidebar-primary shadow-industrial"
+                          transition={sidebarSpring}
+                        />
+                      )}
+                      <Icon className="relative z-10 h-5 w-5 shrink-0" />
+                      <span className="relative z-10">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* User + Close */}
+              <div className="border-t border-sidebar-border p-3 space-y-2">
+                {profile && (
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold">
+                      {profile.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
+                      <p className="text-xs text-sidebar-foreground/60 capitalize">{profile.role}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={signOut}
+                    className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </motion.aside>
+          </>
         )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <motion.aside
+        className="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground overflow-hidden"
+        animate={{ width: collapsed ? 64 : 256 }}
+        transition={sidebarSpring}
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
             <Shield className="h-5 w-5 text-primary-foreground" />
           </div>
-          {!collapsed && (
-            <div className="animate-fade-in overflow-hidden">
-              <h1 className="text-lg font-bold text-sidebar-foreground truncate">
-                {organization?.name || config.app.name}
-              </h1>
-              <p className="text-xs text-sidebar-foreground/60">
-                {isTechnician ? 'Technician' : 'Manager'}
-              </p>
-            </div>
-          )}
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div
+                key="logo-text"
+                className="overflow-hidden"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h1 className="text-lg font-bold text-sidebar-foreground truncate whitespace-nowrap">
+                  {organization?.name || config.app.name}
+                </h1>
+                <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap">
+                  {isTechnician ? 'Technician' : 'Manager'}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Nav */}
@@ -101,14 +200,34 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-all duration-200',
+                  'relative flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-200',
                   isActive
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-industrial'
+                    ? 'text-sidebar-primary-foreground'
                     : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                 )}
               >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span className="animate-fade-in">{item.label}</span>}
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-active"
+                    className="absolute inset-0 rounded-lg bg-sidebar-primary shadow-industrial"
+                    transition={sidebarSpring}
+                  />
+                )}
+                <Icon className="relative z-10 h-5 w-5 shrink-0" />
+                <AnimatePresence>
+                  {!collapsed && (
+                    <motion.span
+                      key="nav-label"
+                      className="relative z-10 whitespace-nowrap"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto' }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Link>
             );
           })}
@@ -116,17 +235,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* User + Collapse */}
         <div className="border-t border-sidebar-border p-3 space-y-2">
-          {!collapsed && profile && (
-            <div className="flex items-center gap-3 px-3 py-2 animate-fade-in">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold">
-                {profile.full_name.charAt(0).toUpperCase()}
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
-                <p className="text-xs text-sidebar-foreground/60 capitalize">{profile.role}</p>
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {!collapsed && profile && (
+              <motion.div
+                key="user-info"
+                className="flex items-center gap-3 px-3 py-2"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold">
+                  {profile.full_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate whitespace-nowrap">{profile.full_name}</p>
+                  <p className="text-xs text-sidebar-foreground/60 capitalize whitespace-nowrap">{profile.role}</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="flex gap-2">
             <Button
               variant="ghost"
@@ -146,7 +274,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
