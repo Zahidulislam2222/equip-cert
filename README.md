@@ -70,7 +70,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 |---------|-------------|
 | **Multi-AI Provider** | Swap between Gemini, OpenAI, or Claude via environment variable — zero code changes |
 | **Multi-Tenant** | Organization-scoped data isolation with Row Level Security |
-| **Dark Mode** | System-aware theme with manual toggle |
+| **Industrial Dark Theme** | Dark-first design with ANSI safety colors + Framer Motion animations across all pages. Light mode toggle available |
 | **Mobile App** | Android APK via Capacitor — same codebase |
 | **Stripe Billing** | Free / Pro / Enterprise tiers with feature gating |
 
@@ -118,7 +118,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 |-------|-----------|-----|
 | Framework | **Next.js 16** + React 19 | Static export + file-based routing |
 | Language | **TypeScript 5** | Type safety across the entire codebase |
-| Styling | **Tailwind CSS 3.4** | Utility-first with custom "Industrial Premium" design system |
+| Styling | **Tailwind CSS 3.4** | Utility-first with custom "Industrial Dark" design system — ANSI safety colors, blueprint grids |
 | UI | **Radix UI** + CVA | Accessible, composable components |
 | Auth | **Supabase Auth** | Email, magic link, OAuth — with RLS for data isolation |
 | Database | **Supabase PostgreSQL** | 8 tables, Row Level Security, realtime subscriptions |
@@ -128,7 +128,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | CMS | **Contentful** | Dynamic equipment checklists managed by non-developers |
 | PDF | **react-pdf/renderer** | Server-quality inspection reports in the browser |
 | Offline | **IndexedDB** | Queue submissions offline, auto-sync on reconnect |
-| Animations | **Framer Motion** + CSS | Page transitions, skeleton loading, micro-interactions |
+| Animations | **Framer Motion 12** | 9 motion primitives: scroll reveals, staggered grids, spring physics, parallax, kinetic text, AnimatePresence transitions |
 | Toasts | **Sonner** | Non-intrusive notifications |
 | Charts | **Recharts** | Dashboard analytics (ready for Phase 3 expansion) |
 
@@ -249,6 +249,7 @@ equip-cert/
 │   ├── components/
 │   │   ├── auth/                 #   AuthProvider, ProtectedRoute
 │   │   ├── layout/               #   AppLayout (sidebar + topbar)
+│   │   ├── motion/               #   9 Framer Motion primitives (FadeInView, StaggerGrid, etc.)
 │   │   ├── shared/               #   GPS, Signatures, Notifications, Offline
 │   │   └── ...                   #   dashboard, technician, equipment, corrective
 │   └── lib/
