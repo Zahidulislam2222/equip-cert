@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run test:config && next build",
+    "build": "npm run test:config && npm run test:schema && next build",
     "start": "next start",
     "lint": "eslint src/ api/ deploy/ --max-warnings 20",
     "test:config": "node scripts/check-config-boundary.mjs",
     "test:model": "python tests/glb_structure_test.py",
-    "test": "npm run test:config",
+    "test": "npm run test:config && npm run test:schema",
     "export:model": "\"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe\" -b --factory-startup --python scripts/blender/extinguisher.py -- --mode glb --out public/media/extinguisher.glb",
     "build:probe": "esbuild tests/model_render_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/probe.js --log-level=warning --loader:.json=json",
     "build:server": "esbuild deploy/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=deploy/generated/server.cjs --log-level=warning",
@@ -19,7 +19,10 @@
     "encode:flight": "python scripts/encode-flight.py",
     "render:flight": "\"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe\" -b --factory-startup --python scripts/blender/extinguisher.py --",
     "test:sequence": "node tests/hero_sequence_test.mjs",
-    "build:probe:motion": "esbuild tests/hero_motion_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/motion.js --log-level=warning --loader:.json=json"
+    "build:probe:motion": "esbuild tests/hero_motion_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/motion.js --log-level=warning --loader:.json=json",
+    "test:schema": "node scripts/gen-plan-limits-sql.mjs --check",
+    "gen:schema": "node scripts/gen-plan-limits-sql.mjs",
+    "test:deps": "node scripts/check-live-dependencies.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
