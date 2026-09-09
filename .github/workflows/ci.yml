@@ -5,64 +5,199 @@ on:
     branches: [main]
     paths-ignore:
       - '**.md'
-      - 'EquipCert.docx'
       - '.gitignore'
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+# A superseded run proves nothing. Cancel it rather than paying for it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege by default. No job here writes to the repository.
+permissions:
+  contents: read
 
 jobs:
-  lint-and-build:
-    name: Config, Lint, Typecheck & Build
+  # ---------------------------------------------------------------------------
+  # Everything that can be decided from the repository alone.
+  #
+  # Deliberately needs NO secrets, so it also runs on pull requests from forks —
+  # where GitHub does not expose secrets at all. A gate that silently skips on
+  # exactly the changes that most need reviewing is not a gate.
+  # ---------------------------------------------------------------------------
+  static:
+    name: Static gates
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
-      - name: Verify required env is present
-        # DEF-001: GitHub substitutes an empty string for a missing secret, so a build can
-        # go green while shipping blank AI/app config. Fail loudly instead.
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_CONTENTFUL_SPACE_ID: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_SPACE_ID }}
-          NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN }}
-          AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
-          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-        run: |
-          missing=""
-          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY                      NEXT_PUBLIC_CONTENTFUL_SPACE_ID NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN                      AI_PROVIDER AI_MODEL_NAME AI_API_KEY; do
-            if [ -z "${!var}" ]; then missing="$missing $var"; fi
-          done
-          if [ -n "$missing" ]; then
-            echo "::error::Missing required repository secrets:$missing"
-            exit 1
-          fi
-          echo "All required secrets are present."
-
-
-      - name: Config boundary (Rule 12)
+      - name: Configuration boundary (Rule 12)
         run: npm run test:config
+
+      - name: Plan limits match plans.ts
+        run: npm run test:schema
 
       - name: Lint
         run: npm run lint
 
-      - name: Build (includes TypeScript check)
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # The build bakes NEXT_PUBLIC_* values into the static export, so this job uses
+      # unmistakably fake ones. That is correct here and not a shortcut: this job proves the
+      # code COMPILES, and its output is never deployed. Deployment builds its own artifact
+      # with real configuration (see deploy/ and Rule 9). Using real secrets here would put
+      # them inside a CI artifact for no benefit.
+      - name: Build (static export)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example-ci.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-not-a-real-key
+          NEXT_PUBLIC_CONTENTFUL_SPACE_ID: ci-placeholder
+          NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN: ci-placeholder
+          NEXT_PUBLIC_APP_URL: https://example-ci.invalid
+        run: npm run build
+
+      - name: Build self-host adapter
+        run: npm run build:server
+
+  # ---------------------------------------------------------------------------
+  # Everything that can only be decided by asking the real services.
+  #
+  # This is the class of gate whose absence let DEF-007 (a backend that was not
+  # answering), DEF-017 (a public storage bucket) and DEF-020 (a privilege
+  # escalation) all coexist in a green build. None of them is visible to a
+  # linter, a type checker or a build.
+  #
+  # Skipped, loudly, when the secrets are not configured. It must never fail
+  # open by quietly passing.
+  # ---------------------------------------------------------------------------
+  live:
+    name: Live service gates
+    runs-on: ubuntu-latest
+    needs: static
+    # Fork pull requests get no secrets; running would only produce noise.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # DEF-001: GitHub substitutes an empty string for a missing secret, so a workflow can go
+      # green while doing nothing at all. That is exactly how the keepalive ended up curling an
+      # empty URL for weeks while the project it was meant to keep alive was paused. Every job
+      # that depends on a secret states which ones, and stops if any is blank.
+      - name: Check required secrets are present
+        id: secrets
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          NEXT_PUBLIC_CONTENTFUL_SPACE_ID: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_SPACE_ID }}
+          NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN }}
+        run: |
+          missing=""
+          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY \
+                     SUPABASE_SERVICE_ROLE_KEY SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF \
+                     NEXT_PUBLIC_CONTENTFUL_SPACE_ID NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN; do
+            if [ -z "${!var}" ]; then missing="$missing $var"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Live gates cannot run::Missing repository secrets:$missing"
+            echo "These gates are the only ones that can detect a dead backend, a public"
+            echo "storage bucket, or a privilege escalation. Set them in"
+            echo "Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "All required secrets are present."
+
+      - name: Dependencies are reachable (DEF-022)
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_CONTENTFUL_SPACE_ID: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_SPACE_ID }}
           NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN }}
-          AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
-          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-        run: npm run build
+        run: npm run test:deps
+
+      - name: Generated types match the applied migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: npm run test:types
+
+      - name: Tenant isolation and privilege boundaries (DEF-025)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run test:rls
+
+      # `migration list` needs a database connection, so this is the one step that also needs
+      # the database password. The link is written to supabase/.temp, which is gitignored and
+      # discarded with the runner.
+      - name: Link the project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        # The password is passed through the environment, never as a command-line argument:
+        # `npm notice run` echoes the full command line, which is how the database password
+        # ended up in a session transcript and had to be rotated by hand.
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error title=SUPABASE_DB_PASSWORD not set::The migration gate needs a"
+            echo "database connection. Set it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          npx --silent supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      # A migration that is merged but never applied does nothing, and the failure surfaces
+      # later as a missing column at runtime. The reverse — applied but not in the repository —
+      # means the schema was changed by hand, which is how DEF-019 lost a whole table.
+      - name: Migrations are applied and tracked
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: npm run test:migrations
+
+      # Supabase's own linters. They catch the class of thing a human review misses:
+      # a table left without RLS, a function with a mutable search_path, a missing index
+      # behind a foreign key.
+      - name: Supabase security advisors
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          result=$(npx --silent supabase db advisors --linked --type security 2>&1)
+          echo "$result"
+          # The only accepted finding is leaked-password protection, which is a Pro-plan
+          # feature. It is answered client-side in src/lib/password-safety.ts instead.
+          if echo "$result" | grep -o '"name":"[^"]*"' | grep -v 'auth_leaked_password_protection' | grep -q .; then
+            echo "::error title=Security advisor::A new security finding appeared."
+            exit 1
+          fi
+
+      - name: Supabase performance advisors
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          result=$(npx --silent supabase db advisors --linked --type performance 2>&1)
+          echo "$result"
+          if echo "$result" | grep -q '"level":"ERROR"'; then
+            echo "::error title=Performance advisor::A performance finding at ERROR level appeared."
+            exit 1
+          fi

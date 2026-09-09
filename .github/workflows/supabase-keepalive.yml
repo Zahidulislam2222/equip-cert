@@ -1,17 +1,91 @@
 name: Supabase Keep Alive
 
+# A Supabase free project is PAUSED after one week without traffic, and a paused project
+# loses its DNS record — which is why the previous version of this file mattered so much and
+# why its failure was so expensive.
+#
+# The old workflow was:
+#
+#   curl -s -o /dev/null -w "%{http_code}" "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/" ...
+#
+# Three faults, all of which had to line up, and all of which did (DEF-001, DEF-007):
+#
+#   1. GitHub substitutes an EMPTY STRING for an unset secret, and the secrets were unset.
+#      The URL therefore became "/rest/v1/".
+#   2. `-s -o /dev/null -w` prints a status code and discards everything else.
+#   3. curl's exit status was never checked and the status code was never compared to
+#      anything, so the step passed regardless.
+#
+# The result was a daily green tick on a job that made no request, while the project it
+# existed to keep awake went to sleep and its DNS record disappeared. The keepalive did not
+# fail to prevent the outage; the keepalive CAUSED the outage to go unnoticed.
+#
+# This version asserts the secret exists, asserts the response is a real Supabase response,
+# and fails loudly otherwise.
+
 on:
   schedule:
-    - cron: "0 0 * * *" # once per day (UTC)
+    # Twice weekly, comfortably inside the one-week pause window even if one run is skipped.
+    # GitHub disables scheduled workflows on repositories with no activity for 60 days, so
+    # this is a reminder rather than a guarantee — see the note in the final step.
+    - cron: '0 6 * * 1,4'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   ping:
+    name: Keep the project awake
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase
+      - name: Verify the secrets exist
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
-          curl -s -o /dev/null -w "%{http_code}" \
-          "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/" \
-          -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error title=Keepalive is inert::NEXT_PUBLIC_SUPABASE_URL or"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. This job would send a request to"
+            echo "nowhere and report success, which is exactly what caused DEF-007."
+            exit 1
+          fi
+
+      - name: Ping the auth endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          # --fail-with-body makes curl exit non-zero on a 4xx/5xx while still showing why.
+          # The auth health endpoint is used because it answers 200 for any valid key,
+          # whereas /rest/v1/ deliberately requires a secret key and answers 401.
+          status=$(curl -sS --max-time 20 -o /tmp/body -w '%{http_code}' \
+            "${SUPABASE_URL%/}/auth/v1/health" \
+            -H "apikey: ${SUPABASE_ANON_KEY}")
+
+          echo "HTTP ${status}"
+          cat /tmp/body
+
+          if [ "$status" != "200" ]; then
+            echo "::error title=Supabase is not answering::Expected HTTP 200 from the auth"
+            echo "health endpoint, got ${status}. The project may be paused, deleted, or the"
+            echo "anon key may have been rotated."
+            exit 1
+          fi
+
+          # A 200 from something that is not GoTrue would mean the URL points somewhere else.
+          if ! grep -q '"name":"GoTrue"' /tmp/body; then
+            echo "::error title=Unexpected response::The endpoint answered 200 but does not"
+            echo "look like Supabase Auth. Check NEXT_PUBLIC_SUPABASE_URL."
+            exit 1
+          fi
+
+          echo "Supabase auth is awake and answering."
+
+      - name: Note the residual risk
+        run: |
+          echo "::notice title=Scheduled workflows expire::GitHub disables cron workflows on a"
+          echo "repository with no commits for 60 days. If this project goes quiet for longer,"
+          echo "this keepalive stops running and the Supabase project will pause again."
+          echo "Re-enable it from the Actions tab, or push any commit."

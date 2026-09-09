@@ -1,0 +1,48 @@
+version: 2
+
+# Free on every plan, including public repositories.
+#
+# Two ecosystems, deliberately different cadences. npm dependencies are where a vulnerable
+# transitive package arrives; GitHub Actions are where a compromised action would run with
+# repository credentials, so those are worth watching even though they change rarely.
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # Security updates always come through individually and are never grouped, regardless of
+    # what is written here — grouping only affects routine version bumps, which are far easier
+    # to review as one PR than as fifteen.
+    groups:
+      dev-tooling:
+        patterns:
+          - '@types/*'
+          - 'eslint*'
+          - 'typescript'
+          - 'esbuild'
+        update-types: [minor, patch]
+      runtime-minor-patch:
+        patterns: ['*']
+        exclude-patterns:
+          - 'next'
+          - 'react'
+          - 'react-dom'
+          - 'three'
+        update-types: [minor, patch]
+    ignore:
+      # three.js and @types/three are pinned to exact versions on purpose: the hero renderer
+      # uses post-processing passes from the examples directory, which is explicitly not
+      # covered by the library's semver guarantees. Upgrades here are a deliberate act with a
+      # visual check, not a routine bump.
+      - dependency-name: 'three'
+        update-types: [version-update:semver-minor, version-update:semver-patch]
+      - dependency-name: '@types/three'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

@@ -289,10 +289,13 @@ max_frequency = "5s"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
-# Left as the remote reports it so `supabase config diff` stays empty and can be used
-# as a drift gate. The API refuses to change this without an account_sid, and it has no
-# practical effect: [auth.sms] enable_signup is false, so no SMS auth path is reachable.
-enabled = true
+# MUST stay false while account_sid is empty. Setting it true to make `supabase config diff`
+# report zero drift looked tidy and broke the entire CLI: the config becomes semantically
+# invalid and every command that loads it fails with CliConfigParseError, including
+# `gen types` and `db push`. The remote reports true and refuses to be changed without an
+# account_sid, so one known diff line is the correct resting state. It has no practical
+# effect either way: [auth.sms] enable_signup is false, so no SMS auth path is reachable.
+enabled = false
 account_sid = ""
 message_service_sid = ""
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:

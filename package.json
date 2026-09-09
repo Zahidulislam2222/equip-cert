@@ -25,7 +25,8 @@
     "test:deps": "node scripts/check-live-dependencies.mjs",
     "test:rls": "node --test \"e2e/*.test.mjs\"",
     "gen:types": "npx --silent supabase gen types typescript --linked > src/lib/database.types.ts",
-    "test:types": "node scripts/check-generated-types.mjs"
+    "test:types": "node scripts/check-generated-types.mjs",
+    "test:migrations": "node scripts/check-migrations-applied.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

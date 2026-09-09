@@ -31,12 +31,22 @@ const TARGET = join(ROOT, 'src', 'lib', 'database.types.ts');
 
 let generated;
 try {
+  // `--linked` reads supabase/.temp/project-ref, which is gitignored and therefore absent on
+  // a CI runner. SUPABASE_PROJECT_REF targets the project explicitly instead, so the gate
+  // works both locally (linked) and in Actions (ref + access token) without a link step.
+  const ref = process.env.SUPABASE_PROJECT_REF;
+  const target = ref ? `--project-id ${ref}` : '--linked';
+
   // `exec` rather than `execFile`: on Windows `npx` is a .cmd shim, and since Node 20.12 the
-  // runtime refuses to spawn one directly (EINVAL). exec goes through a shell, and passing
-  // the command as one fixed string avoids the args-with-shell deprecation. Nothing here is
-  // interpolated, so there is no input to inject.
+  // runtime refuses to spawn one directly (EINVAL). exec goes through a shell, and the only
+  // interpolated value is validated below, so there is nothing to inject.
+  if (ref && !/^[a-z]{20}$/.test(ref)) {
+    console.error(`✗ SUPABASE_PROJECT_REF is not a valid project ref: ${ref}`);
+    process.exit(1);
+  }
+
   const { stdout } = await run(
-    'npx --silent supabase gen types typescript --linked',
+    `npx --silent supabase gen types typescript ${target}`,
     { cwd: ROOT, maxBuffer: 16 * 1024 * 1024 }
   );
   generated = stdout;
