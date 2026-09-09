@@ -1,0 +1,12 @@
+{
+  "_comment": "Single owner for this app's shared-VPS allocation (Global Rule 12). The Caddy site file and compose.yaml are GENERATED from this file by scripts/gen-deploy-artifacts.mjs — never hand-edit the generated copies. The matching ownership row lives in the private _shared-infrastructure/INFRASTRUCTURE.md registry.",
+  "slug": "equipcert",
+  "hostname": "equipcert.zahidul-islam.com",
+  "loopbackPort": 18081,
+  "containerPort": 8080,
+  "resources": {
+    "memLimit": "512m",
+    "cpus": 1.0,
+    "pidsLimit": 256
+  }
+}

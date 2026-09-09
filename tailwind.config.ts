@@ -16,11 +16,13 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        // Self-hosted via next/font; the CSS variables are declared on <html>.
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-body)', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
+        elevated: "hsl(var(--elevated))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -80,8 +82,6 @@ const config: Config = {
         sm: "var(--shadow-sm)",
         card: "var(--shadow-card)",
         elevated: "var(--shadow-elevated)",
-        industrial: "var(--shadow-industrial)",
-        glow: "var(--shadow-glow)",
       },
       keyframes: {
         "accordion-down": {
@@ -91,10 +91,6 @@ const config: Config = {
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
-        },
-        "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0 hsl(45 100% 55% / 0)" },
-          "50%": { boxShadow: "0 0 20px 0 hsl(45 100% 55% / 0.4)" },
         },
         "shimmer": {
           "0%": { backgroundPosition: "-200% 0" },
@@ -108,7 +104,6 @@ const config: Config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-glow": "pulse-glow 2s infinite",
         "shimmer": "shimmer 1.5s infinite",
         "float": "float 3s ease-in-out infinite",
       },

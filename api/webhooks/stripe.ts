@@ -1,16 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { config, serverConfig } from '../../src/lib/config';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { secretKey, webhookSecret } = serverConfig.stripe;
+  const supabaseUrl = config.supabase.url;
+  const supabaseServiceKey = serverConfig.supabase.serviceRoleKey;
 
   if (!secretKey || !webhookSecret || !supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Stripe or Supabase not configured' });

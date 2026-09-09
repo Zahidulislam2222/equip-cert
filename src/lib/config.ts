@@ -1,0 +1,80 @@
+// Central configuration — ALL env vars accessed through here. Zero hardcoding.
+//
+// Nothing outside this file may read process.env or invent a fallback default. Changing a
+// provider URL, model, API version, limit, or timeout must be a config/env edit only.
+
+/** Parse an integer env var, falling back to `fallback` when unset or malformed. */
+function intEnv(raw: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export const config = {
+  // App
+  app: {
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'EquipCert AI',
+    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  },
+
+  // Supabase
+  supabase: {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  },
+
+  // Contentful
+  contentful: {
+    spaceId: process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID!,
+    accessToken: process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN!,
+  },
+
+  // Stripe (client-side key only — secret key stays in Vercel functions)
+  stripe: {
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+  },
+
+  // Geolocation — reverse geocoding provider and capture timeout (client-side)
+  geo: {
+    reverseGeocodeUrl:
+      process.env.NEXT_PUBLIC_REVERSE_GEOCODE_URL || 'https://nominatim.openstreetmap.org/reverse',
+    gpsTimeoutMs: intEnv(process.env.NEXT_PUBLIC_GPS_TIMEOUT_MS, 10_000),
+  },
+} as const;
+
+// Server-only config (Vercel serverless functions only — never import in client code)
+export const serverConfig = {
+  ai: {
+    provider: (process.env.AI_PROVIDER || 'google') as 'google' | 'openai' | 'anthropic',
+    model: process.env.AI_MODEL_NAME || 'gemini-2.5-flash',
+    // GOOGLE_AI_API_KEY is a legacy name kept only as a fallback — see CREDENTIALS.md §15.
+    apiKey: process.env.AI_API_KEY || process.env.GOOGLE_AI_API_KEY || '',
+    maxTokens: intEnv(process.env.AI_MAX_TOKENS, 1024),
+    // Anthropic REST details: this is the one authoritative definition.
+    anthropic: {
+      baseUrl: process.env.AI_ANTHROPIC_BASE_URL || 'https://api.anthropic.com/v1/messages',
+      version: process.env.AI_ANTHROPIC_VERSION || '2023-06-01',
+    },
+  },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+  },
+  // Bypasses RLS — server-side handlers only, never a NEXT_PUBLIC_ var.
+  supabase: {
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  },
+  // Operational limits for the /api/analyze endpoint
+  analyze: {
+    rateLimit: intEnv(process.env.ANALYZE_RATE_LIMIT, 20),
+    rateWindowMs: intEnv(process.env.ANALYZE_RATE_WINDOW_MS, 60 * 60 * 1000),
+    maxImageBytes: intEnv(process.env.ANALYZE_MAX_IMAGE_BYTES, 10 * 1024 * 1024),
+  },
+  // Self-hosted runtime (deploy/server.ts). Unused on Vercel, which supplies its own
+  // runtime and serves `out/` itself.
+  selfHost: {
+    port: intEnv(process.env.SELF_HOST_PORT, 8080),
+    staticDir: process.env.SELF_HOST_STATIC_DIR || 'out',
+    // Max bytes accepted for any single request body before the adapter rejects it.
+    maxRequestBytes: intEnv(process.env.SELF_HOST_MAX_REQUEST_BYTES, 12 * 1024 * 1024),
+  },
+} as const;

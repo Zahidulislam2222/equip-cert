@@ -5,9 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run test:config && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint src/ api/ deploy/ --max-warnings 20",
+    "test:config": "node scripts/check-config-boundary.mjs",
+    "test:model": "python tests/glb_structure_test.py",
+    "test": "npm run test:config",
+    "export:model": "\"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe\" -b --factory-startup --python scripts/blender/extinguisher.py -- --mode glb --out public/media/extinguisher.glb",
+    "build:probe": "esbuild tests/model_render_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/probe.js --log-level=warning --loader:.json=json",
+    "build:server": "esbuild deploy/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=deploy/generated/server.cjs --log-level=warning",
+    "deploy:gen": "node scripts/gen-deploy-artifacts.mjs",
+    "test:contrast": "python scripts/check-overlay-contrast.py",
+    "encode:flight": "python scripts/encode-flight.py",
+    "render:flight": "\"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe\" -b --factory-startup --python scripts/blender/extinguisher.py --",
+    "test:sequence": "node tests/hero_sequence_test.mjs",
+    "build:probe:motion": "esbuild tests/hero_motion_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/motion.js --log-level=warning --loader:.json=json"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
@@ -38,6 +50,7 @@
     "stripe": "^22.0.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "three": "0.186.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -45,7 +58,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "0.185.4",
     "autoprefixer": "^10.4.23",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "postcss": "^8.5.6",

@@ -1,0 +1,495 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonts are self-hosted via next/font in src/app/layout.tsx.
+   Never @import from fonts.googleapis.com here: it is render-blocking, adds a
+   third-party request, and fails offline — fatal for the Capacitor build. */
+
+@layer base {
+  :root {
+    /* ===================================================================
+       ONE ACCENT. Safety Yellow carries every call to action.
+       Green / amber / red are SEMANTIC ONLY — they mean pass, warning and
+       fail. Never spend them as decoration: this is an inspection product
+       and those three colours have to keep meaning something.
+       =================================================================== */
+    --primary: 45 100% 55%;
+    --primary-foreground: 30 20% 6%;
+    --primary-muted: 45 100% 55% / 0.12;
+
+    /* Semantic — reserved for inspection state */
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 52%;
+    --warning-foreground: 30 40% 8%;
+    --destructive: 4 74% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Surfaces — warm neutral, the colour of concrete and shadow.
+       Deliberately not blue-grey; that reads as generic dark-mode SaaS. */
+    --background: 30 8% 6%;
+    --foreground: 36 12% 92%;
+    --card: 30 8% 9%;
+    --card-foreground: 36 12% 92%;
+    --elevated: 30 7% 12%;
+    --muted: 30 6% 15%;
+    --muted-foreground: 34 7% 58%;
+    --secondary: 30 6% 15%;
+    --secondary-foreground: 36 12% 92%;
+    --accent: 45 100% 55%;
+    --accent-foreground: 30 20% 6%;
+
+    --border: 32 7% 17%;
+    --input: 32 7% 17%;
+    --ring: 45 100% 55%;
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar-background: 30 9% 4%;
+    --sidebar-foreground: 36 10% 86%;
+    --sidebar-primary: 45 100% 55%;
+    --sidebar-primary-foreground: 30 20% 6%;
+    --sidebar-accent: 30 8% 11%;
+    --sidebar-border: 32 7% 14%;
+    --sidebar-ring: 45 100% 55%;
+
+    /* Elevation — real light behaves like light. Ambient + direct, never one blur. */
+    --shadow-sm: 0 1px 2px hsl(30 20% 2% / 0.5);
+    --shadow-card: 0 1px 2px hsl(30 20% 2% / 0.4), 0 8px 24px -12px hsl(30 20% 2% / 0.7);
+    --shadow-elevated: 0 2px 4px hsl(30 20% 2% / 0.4), 0 24px 56px -20px hsl(30 20% 2% / 0.8);
+
+    /* Type scale — fluid, clamped. Display sizes are meant to be large. */
+    --step-0: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
+    --step-1: clamp(1.15rem, 1.05rem + 0.45vw, 1.4rem);
+    --step-2: clamp(1.5rem, 1.3rem + 0.9vw, 2rem);
+    --step-3: clamp(2rem, 1.6rem + 1.9vw, 3rem);
+    --step-4: clamp(2.6rem, 1.9rem + 3.4vw, 4.5rem);
+    --step-5: clamp(3.2rem, 2rem + 5.6vw, 6.5rem);
+  }
+
+  .light {
+    --primary: 42 100% 42%;
+    --primary-foreground: 30 20% 6%;
+    --primary-muted: 42 100% 42% / 0.1;
+
+    --success: 152 62% 34%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 92% 44%;
+    --warning-foreground: 30 40% 8%;
+    --destructive: 4 70% 46%;
+    --destructive-foreground: 0 0% 100%;
+
+    --background: 36 22% 96%;
+    --foreground: 30 14% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 30 14% 10%;
+    --elevated: 36 20% 99%;
+    --muted: 34 14% 91%;
+    --muted-foreground: 32 8% 42%;
+    --secondary: 34 14% 91%;
+    --secondary-foreground: 30 14% 10%;
+    --accent: 42 100% 42%;
+    --accent-foreground: 30 20% 6%;
+
+    --border: 34 12% 86%;
+    --input: 34 12% 86%;
+    --ring: 42 100% 42%;
+
+    --sidebar-background: 30 14% 10%;
+    --sidebar-foreground: 36 14% 94%;
+    --sidebar-primary: 45 100% 52%;
+    --sidebar-primary-foreground: 30 20% 6%;
+    --sidebar-accent: 30 12% 17%;
+    --sidebar-border: 30 12% 17%;
+    --sidebar-ring: 45 100% 52%;
+
+    --shadow-sm: 0 1px 2px hsl(30 20% 20% / 0.06);
+    --shadow-card: 0 1px 2px hsl(30 20% 20% / 0.05), 0 8px 24px -12px hsl(30 20% 20% / 0.12);
+    --shadow-elevated: 0 2px 4px hsl(30 20% 20% / 0.06), 0 24px 56px -20px hsl(30 20% 20% / 0.18);
+  }
+
+  html {
+    /* The document is the scroller. The authenticated app shell locks its OWN
+       viewport (AppLayout) — locking it here too would break every scroll-driven
+       timeline on the marketing pages, which need a real scrollport. */
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-body), system-ui, sans-serif;
+    font-size: var(--step-0);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Display face: tight tracking, optical sizing. Large type is the design. */
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display), system-ui, sans-serif;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  p, li {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.85);
+    color: hsl(var(--primary-foreground));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .shadow-sm { box-shadow: var(--shadow-sm); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .h-safe-screen { height: 100dvh; }
+
+  .text-step-0 { font-size: var(--step-0); }
+  .text-step-1 { font-size: var(--step-1); }
+  .text-step-2 { font-size: var(--step-2); }
+  .text-step-3 { font-size: var(--step-3); }
+  .text-step-4 { font-size: var(--step-4); line-height: 0.98; }
+  .text-step-5 { font-size: var(--step-5); line-height: 0.92; }
+
+  /* Sticky chrome over scrolling content. The one legitimate use of blur. */
+  .glass {
+    /* 0.72 let headline-sized text read straight through the bar — pricing figures were
+       legible behind the nav. Blur alone does not rescue large high-contrast type. */
+    background: hsl(var(--background) / 0.92);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  }
+
+  /* Browsers without backdrop-filter get a solid bar rather than a see-through one. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+      background: hsl(var(--background));
+    }
+  }
+
+  /* Scrim behind the inspection-film copy.
+     SOLE OWNER of these three stops. scripts/check-overlay-contrast.py parses this rule to
+     composite the film exactly as the browser does; changing the numbers here changes the
+     measurement too, so the check cannot silently drift from the design.
+     Raised from 0.78 to 0.92 at the midpoint after measurement: body text was landing at
+     4.17:1 over the brightest part of the film, below the 4.5:1 WCAG 1.4.3 minimum. */
+  .flight-scrim {
+    background: linear-gradient(
+      to right,
+      hsl(var(--background) / 1) 0%,
+      hsl(var(--background) / 0.92) 50%,
+      hsl(var(--background) / 0) 100%
+    );
+  }
+
+  /* Brand mark only. Not a text treatment, not a button, not a card. */
+  .gradient-primary {
+    background: linear-gradient(150deg, hsl(45 100% 62%), hsl(38 100% 50%));
+  }
+
+  /* Hairline rule that fades out — used instead of hard borders everywhere */
+  .rule-fade {
+    background: linear-gradient(90deg, hsl(var(--border)), transparent);
+    height: 1px;
+  }
+
+  /* Blueprint grid. One value, one purpose — no stacked mesh gradients. */
+  .bg-grid {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.55) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.55) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+  }
+
+  /* Film grain — breaks the flat-vector look that reads as generated */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted-foreground) / 0.06) 50%, hsl(var(--muted)) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ===========================================================================
+   SCROLL-DRIVEN ANIMATION — native CSS, runs off the main thread.
+   Progressive enhancement: without support, elements are simply visible.
+   Never gate content behind these; they only add motion.
+   =========================================================================== */
+
+@keyframes sc-rise {
+  from { opacity: 0; transform: translateY(2.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sc-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sc-parallax {
+  from { transform: translateY(6%); }
+  to   { transform: translateY(-6%); }
+}
+
+@keyframes sc-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sc-rise {
+      animation: sc-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 26%;
+    }
+
+    .sc-fade {
+      animation: sc-fade linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 22%;
+    }
+
+    .sc-parallax {
+      animation: sc-parallax linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /* Reading-progress bar. Uses the named document timeline declared on <html>. */
+    .sc-progress {
+      animation: sc-progress linear both;
+      animation-timeline: scroll(root block);
+      transform-origin: 0 50%;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   STACKING CARDS — the six-step sequence slides over itself instead of
+   scrolling away.
+
+   Pure CSS sticky, no JavaScript and no scroll library: each card pins at its
+   own offset, so card N+1 rides over card N and the pile stays legible. The
+   offsets accumulate through --i, which leaves the top edge of every previous
+   card visible as a spine.
+
+   It is opt-in by viewport and by motion preference. Below 1024px, and for
+   anyone who asked for reduced motion, the cards are ordinary static blocks in
+   the same DOM order — an ordered list of six steps, which is what the content
+   actually is. Nothing is hidden in either mode, so no covered card can hold a
+   focusable element a keyboard user cannot see.
+   --------------------------------------------------------------------------- */
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .stack-item {
+    position: sticky;
+    /* Clears the 4rem sticky nav, then steps down per card. */
+    top: calc(5.5rem + var(--i) * 1.4rem);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   FALLBACK for browsers without scroll-driven animation (Firefox stable as of
+   2026-09-09). The `.sda-fallback` class is added by an inline script in
+   layout.tsx only when `animation-timeline` is unsupported AND motion is not
+   reduced AND IntersectionObserver exists — so these rules are inert everywhere
+   else, and unreachable when scripting is off. Content is never hidden by CSS
+   alone; it takes the class to hide it, and the script's watchdog to un-hide it.
+   --------------------------------------------------------------------------- */
+
+.sda-fallback .sc-rise,
+.sda-fallback .sc-fade {
+  opacity: 0;
+}
+
+.sda-fallback .sc-rise {
+  transform: translateY(2.5rem);
+}
+
+.sda-fallback .sc-rise.sda-in {
+  animation: sc-rise 0.72s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+
+.sda-fallback .sc-fade.sda-in {
+  animation: sc-fade 0.6s ease-out both;
+}
+
+/* ---------------------------------------------------------------------------
+   TEXT REVEAL — a headline that does not exist until you reach it.
+
+   The words are clipped from below rather than faded: a wipe reads as the line
+   arriving, where a fade reads as a slow page load. Each line is a span with its
+   own delay, so the headline resolves top to bottom.
+
+   The text itself is never split into per-character elements. Selection, search,
+   translation and screen-reader output all stay intact, which is the failure
+   most letter-by-letter reveals ship with.
+   --------------------------------------------------------------------------- */
+
+@keyframes sc-wipe {
+  from {
+    clip-path: inset(0 0 105% 0);
+    transform: translateY(0.35em);
+  }
+  to {
+    clip-path: inset(0 0 -12% 0);
+    transform: translateY(0);
+  }
+}
+
+.sc-reveal > * {
+  display: block;
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sc-reveal > * {
+      animation: sc-wipe linear both;
+      animation-timeline: view();
+      animation-range: entry 12% cover 30%;
+    }
+    /* Staggering by range rather than delay: with a scroll timeline there is no
+       elapsed time to delay against, so the offset has to live in the range. */
+    .sc-reveal > *:nth-child(2) {
+      animation-range: entry 18% cover 36%;
+    }
+    .sc-reveal > *:nth-child(3) {
+      animation-range: entry 24% cover 42%;
+    }
+  }
+}
+
+.sda-fallback .sc-reveal > * {
+  clip-path: inset(0 0 105% 0);
+}
+
+.sda-fallback .sc-reveal.sda-in > * {
+  animation: sc-wipe 0.85s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+.sda-fallback .sc-reveal.sda-in > *:nth-child(2) { animation-delay: 0.09s; }
+.sda-fallback .sc-reveal.sda-in > *:nth-child(3) { animation-delay: 0.18s; }
+
+/* ---------------------------------------------------------------------------
+   LAYERED PARALLAX — bounded, and only ever applied to decoration.
+
+   Travel is small and the layer is oversized (see .parallax-layer) so a
+   translated edge can never expose the seam behind it. Nothing readable moves:
+   copy staying still while its backdrop drifts is what produces depth, and it
+   also means the effect can be dropped with no loss of content.
+   --------------------------------------------------------------------------- */
+
+.parallax-layer {
+  position: absolute;
+  inset: -14% 0;
+  will-change: transform;
+}
+
+@keyframes sc-drift-slow {
+  from { transform: translate3d(0, -4.5%, 0); }
+  to   { transform: translate3d(0, 4.5%, 0); }
+}
+
+@keyframes sc-drift-fast {
+  from { transform: translate3d(0, -11%, 0); }
+  to   { transform: translate3d(0, 11%, 0); }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* The animation name goes in the shorthand, not in a separate `animation-name`
+       rule after a nameless `animation: linear both`. Written that way, the minifier
+       collapses the nameless shorthand to `animation: none`, which silently also
+       resets fill-mode to `none` and timing-function to `ease` — so the drift lost
+       the `both`/`linear` it needs to hold its end state and track scroll evenly.
+       Caught by reading the built stylesheet, not the source. */
+    .sc-drift-slow {
+      animation: sc-drift-slow linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+    .sc-drift-fast {
+      animation: sc-drift-fast linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   INTRO — the gauge coming up to charge. Purely presentational; the component
+   that renders it only exists when JavaScript runs, and it dismisses itself on
+   a hard ceiling regardless of the network.
+   --------------------------------------------------------------------------- */
+
+@keyframes ec-needle-sweep {
+  0%   { transform: rotate(-138deg); }
+  55%  { transform: rotate(52deg); }
+  72%  { transform: rotate(28deg); }
+  100% { transform: rotate(38deg); }
+}
+
+@keyframes ec-tick-lock {
+  from { opacity: 0; transform: scale(1.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ec-intro-out {
+  to { opacity: 0; visibility: hidden; }
+}
+
+.ec-needle {
+  animation: ec-needle-sweep 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ec-tick {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ec-tick-lock 0.5s ease-out both;
+}
+
+.ec-intro {
+  animation: ec-intro-out 0.55s ease-in 1.05s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

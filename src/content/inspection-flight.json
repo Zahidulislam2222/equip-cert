@@ -1,0 +1,530 @@
+{
+  "$comment": "Single owner of the hero flight. scripts/blender/extinguisher.py reads this to build the camera; src/app/page.tsx imports it for the labels. Editing it here moves both, so a label can never drift off the part it names.",
+  "$camera": "Each beat aims at a FEATURE point taken from the model, and the camera is placed on a sphere around it: azimuth is degrees in the XY plane (0 = +X, -90 = toward the camera side), elevation is degrees above horizontal, distance is metres. Hand-written XYZ positions produced two near-identical shots and a 'hose' beat that framed the body instead — deriving position from the part being inspected does not have that failure mode.",
+  "fps": 25,
+  "frames": 150,
+  "render": {
+    "width": 1280,
+    "height": 720,
+    "shiftX": -0.17,
+    "samples": 32,
+    "engine": "cycles"
+  },
+  "mobile": {
+    "treatment": "still-plus-list",
+    "reason": "A portrait film doubles render cost and pushes tens of MB over mobile data. Per playbook §6 a still with an accessible detail panel is a documented mobile treatment, not a fallback."
+  },
+  "$model": "The interactive viewer reads this block. Hotspots name a part that must exist in the exported GLB (tests/glb_structure_test.py enforces that) and a beat whose eyebrow/title/body they reuse, so the interactive labels cannot drift from the film's labels. Camera poses use the same azimuth/elevation/distance convention as the beats. Offsets are Blender Z-up; the viewer maps [x,y,z] to [x,z,-y] because glTF is Y-up.",
+  "model": {
+    "asset": "/media/extinguisher.glb",
+    "poster": "/media/inspection-flight-poster.webp",
+    "home": {
+      "azimuth": -58,
+      "elevation": 14,
+      "distance": 1.32
+    },
+    "idle": {
+      "amplitudeDeg": 3.2,
+      "periodSeconds": 11,
+      "bobMetres": 0.012
+    },
+    "scrollRotationDeg": 145,
+    "$sequence": "The hero camera path, driven by scroll progress through the pinned section. This replaces the scroll-scrubbed MP4: a video hero silently collapses to a still whenever the file is slow, missing or undecodable (which is exactly what shipped), whereas WebGL either renders or takes the explicit fallback. Each stop names a beat whose copy is reused, so the hero labels and the film labels remain one text. Consecutive stops MUST differ in camera pose or the section renders dead scroll — tests/model_render_probe.ts measures inter-frame difference to catch that, the same way the film's 53% dead-scroll bug was caught.",
+    "sequence": [
+      {
+        "at": 0.0,
+        "beat": null,
+        "anchor": [
+          0,
+          0,
+          0.34
+        ],
+        "camera": {
+          "azimuth": -44,
+          "elevation": 17,
+          "distance": 2.35
+        },
+        "dwell": 0.1,
+        "drift": {
+          "azimuth": 2.5,
+          "distance": 0.985
+        }
+      },
+      {
+        "at": 0.16,
+        "beat": null,
+        "anchor": [
+          0,
+          0,
+          0.34
+        ],
+        "camera": {
+          "azimuth": -55,
+          "elevation": 13,
+          "distance": 1.95
+        },
+        "dwell": 0.14,
+        "drift": {
+          "azimuth": 2.0,
+          "distance": 0.985
+        }
+      },
+      {
+        "at": 0.4,
+        "beat": "gauge",
+        "anchor": [
+          0.075,
+          -0.055,
+          0.64
+        ],
+        "camera": {
+          "azimuth": -72,
+          "elevation": 6,
+          "distance": 0.78
+        },
+        "dwell": 0.46,
+        "drift": {
+          "azimuth": 3.2,
+          "distance": 0.968
+        }
+      },
+      {
+        "at": 0.62,
+        "beat": "lever",
+        "anchor": [
+          0.01,
+          0.0,
+          0.706
+        ],
+        "camera": {
+          "azimuth": -78,
+          "elevation": 27,
+          "distance": 0.8
+        },
+        "dwell": 0.46,
+        "drift": {
+          "azimuth": 3.0,
+          "distance": 0.972
+        }
+      },
+      {
+        "at": 0.84,
+        "beat": "hose",
+        "anchor": [
+          -0.19,
+          -0.075,
+          0.36
+        ],
+        "camera": {
+          "azimuth": -134,
+          "elevation": 7,
+          "distance": 1.1
+        },
+        "dwell": 0.44,
+        "drift": {
+          "azimuth": 3.4,
+          "distance": 0.97
+        }
+      },
+      {
+        "at": 1.0,
+        "beat": "settle",
+        "anchor": [
+          0,
+          0,
+          0.42
+        ],
+        "camera": {
+          "azimuth": -60,
+          "elevation": 14,
+          "distance": 2.5
+        },
+        "dwell": 0.0,
+        "drift": {
+          "azimuth": 0.0,
+          "distance": 1.0
+        }
+      }
+    ],
+    "$lighting": "Viewer-space (Y-up) unlike the camera beats, because these are three.js light positions rather than Blender ones. Tuned against the real asset in a browser (tests/model_render_probe.ts), not guessed: the first rig put the key at [1.7,2.3,2.0], almost on the camera axis, which is textbook flat lighting and read as generic product CG. Two corrections fixed it — the key rakes from above-left so the form turns, and the accent sits BEHIND and opposite the camera so it draws an edge instead of washing the front. environmentIntensity is deliberately low: at 0.34 the neutral studio probe drowned the accent entirely.",
+    "lighting": {
+      "exposure": 1.3,
+      "environmentIntensity": 0.16,
+      "key": {
+        "position": [
+          1.15,
+          2.85,
+          1.45
+        ],
+        "intensity": 4.0,
+        "color": "#fff2dd"
+      },
+      "rim": {
+        "position": [
+          0.85,
+          1.05,
+          -0.95
+        ],
+        "intensity": 13,
+        "distance": 2.2,
+        "color": "#ffc233"
+      },
+      "fill": {
+        "position": [
+          -1.6,
+          0.9,
+          1.2
+        ],
+        "intensity": 0.95,
+        "color": "#93a8c6"
+      },
+      "contactShadow": {
+        "radius": 0.42,
+        "opacity": 0.55
+      }
+    },
+    "example": {
+      "badge": "Example output",
+      "disclosure": "An illustration of what the vision model returns, written by hand. Not a live model response, and not a real asset record.",
+      "equipment": "CO₂ extinguisher, 5 kg",
+      "serial": "EC-5827-114",
+      "captured": "one photograph, no form filled in"
+    },
+    "hotspots": [
+      {
+        "id": "gauge",
+        "part": "Gauge",
+        "beat": "gauge",
+        "anchor": [
+          0.075,
+          -0.055,
+          0.64
+        ],
+        "camera": {
+          "azimuth": -70,
+          "elevation": 6,
+          "distance": 0.78
+        },
+        "read": {
+          "field": "Pressure",
+          "value": "12.4 bar",
+          "state": "pass",
+          "note": "Needle inside the green band."
+        }
+      },
+      {
+        "id": "lever",
+        "part": "Lever",
+        "beat": "lever",
+        "anchor": [
+          0.01,
+          0.0,
+          0.706
+        ],
+        "camera": {
+          "azimuth": -74,
+          "elevation": 26,
+          "distance": 0.82
+        },
+        "read": {
+          "field": "Safety pin",
+          "value": "Seated, seal intact",
+          "state": "pass",
+          "note": "Lever undamaged, no deformation at the pivot."
+        }
+      },
+      {
+        "id": "hose",
+        "part": "Hose",
+        "beat": "hose",
+        "anchor": [
+          -0.19,
+          -0.075,
+          0.36
+        ],
+        "camera": {
+          "azimuth": -128,
+          "elevation": 6,
+          "distance": 1.15
+        },
+        "read": {
+          "field": "Hose and horn",
+          "value": "Surface cracking",
+          "state": "fail",
+          "note": "Opens a corrective action with an owner and a due date."
+        }
+      }
+    ],
+    "explode": [
+      {
+        "id": "cylinder",
+        "label": "Cylinder",
+        "parts": [
+          "Body",
+          "Dome",
+          "Foot",
+          "Label"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.09
+        ]
+      },
+      {
+        "id": "valve",
+        "label": "Valve",
+        "parts": [
+          "Neck",
+          "Valve"
+        ],
+        "offset": [
+          0,
+          0,
+          0.13
+        ]
+      },
+      {
+        "id": "lever",
+        "label": "Lever and pin",
+        "parts": [
+          "Lever",
+          "Grip"
+        ],
+        "offset": [
+          0,
+          0,
+          0.28
+        ]
+      },
+      {
+        "id": "gauge",
+        "label": "Gauge",
+        "parts": [
+          "Gauge",
+          "GaugeFace"
+        ],
+        "offset": [
+          0.26,
+          -0.17,
+          0.06
+        ]
+      },
+      {
+        "id": "hose",
+        "label": "Hose and horn",
+        "parts": [
+          "Hose",
+          "Horn"
+        ],
+        "offset": [
+          -0.32,
+          -0.12,
+          -0.02
+        ]
+      }
+    ],
+    "$framing": "filmOffset is the three.js analogue of the Blender camera shift the film uses (render.shiftX): it slides the projection sideways so the subject sits right of centre and the copy column on the left is not competing with it. Negative moves the subject right. Changing the lens or distance does NOT do this — it would just make the object bigger in the middle, still behind the headline.",
+    "framing": {
+      "filmOffset": -10.5,
+      "fov": 38
+    },
+    "$linger": "Scroll-World's journey rule: the camera SETTLES mid-scene exactly while the copy peaks, then accelerates toward the seam. Without it a camera that smoothsteps continuously between poses reads as a slideshow, not a journey — which is what shipped. `dwell` is the fraction of the following leg spent settled at this stop. It is never a freeze: the film already measured that keying an identical camera at a beat's start and end froze 53% of frames. `drift` carries a slow push through the dwell, the way a real push-in never fully stops, so the shot stays alive while it is being read.",
+    "$inertia": "Scroll VELOCITY, not just position. Oryzo — the closest reference, a physical product reimagined for the AI era — is praised for 'real weight and inertia'. The object leans into the direction of travel and settles back when you stop, which is most of what makes a hero object feel like an object rather than a picture. Codrops' method: raw = scrollNow - scrollPrev, then velocity = lerp(velocity, raw, damping), clamped, with a threshold that snaps to zero so it cannot flicker.",
+    "inertia": {
+      "damping": 0.12,
+      "max": 0.045,
+      "stopThreshold": 0.0002,
+      "leanDeg": 7.5,
+      "yawLeadDeg": 5.0,
+      "exposureLift": 0.1
+    },
+    "$surface": "glTF cannot carry the Blender node graph, so flatten_materials_for_gltf() strips the noise-driven roughness and the bump that stop the render looking like untouched CG. These tiling maps put that micro-variation back in the browser. Generated by scripts/gen-surface-detail.py from a fixed seed, and its tiling is verified numerically rather than assumed. `repeat` is per material because a scratch on a 0.42 m cylinder and a scratch on a 27 mm gauge bezel are not the same size.",
+    "surface": {
+      "detail": "/media/surface-detail.webp",
+      "normal": "/media/surface-normal.webp",
+      "materials": {
+        "Body Red": {
+          "repeat": 5,
+          "roughness": 0.34,
+          "normalScale": 0.16
+        },
+        "Steel": {
+          "repeat": 7,
+          "roughness": 0.42,
+          "normalScale": 0.45
+        },
+        "Brass": {
+          "repeat": 9,
+          "roughness": 0.4,
+          "normalScale": 0.4
+        },
+        "Rubber": {
+          "repeat": 6,
+          "roughness": 0.55,
+          "normalScale": 0.7
+        },
+        "Label": {
+          "repeat": 4,
+          "roughness": 0.5,
+          "normalScale": 0.16
+        },
+        "Gauge Face": {
+          "repeat": 12,
+          "roughness": 0.18,
+          "normalScale": 0.1
+        }
+      }
+    },
+    "$world": "The object stood in a void on a fake blob shadow. A world gives it somewhere to be: an opaque background matching the page, exponential fog so distance reads, and a ground plane carrying the same blueprint grid the page uses, fading out into the fog. Going opaque is also what makes post-processing safe — depth-of-field and bloom composite against a real background rather than punching holes in a transparent canvas over the page.",
+    "world": {
+      "background": "#100f0e",
+      "fog": {
+        "color": "#100f0e",
+        "density": 0.1
+      },
+      "ground": {
+        "size": 26,
+        "color": "#0d0c0b",
+        "roughness": 0.82,
+        "metalness": 0.02,
+        "gridColor": "#221f1c",
+        "gridSpacing": 0.5,
+        "fadeRadius": 6.5
+      }
+    },
+    "$post": "Post-processing, in the order the composer runs it. Depth of field is the single biggest contributor to a product reading as photographed rather than rendered, and its focus distance is driven from the camera to the CURRENT inspection anchor every frame, so the part being inspected is always the sharp thing. Bloom is deliberately tight and high-threshold: it is there for the brass and the accent rim, not to make the page glow.",
+    "post": {
+      "enabled": true,
+      "bloom": {
+        "strength": 0.16,
+        "radius": 0.55,
+        "threshold": 0.92
+      },
+      "dof": {
+        "enabled": true,
+        "aperture": 0.00055,
+        "maxBlur": 0.0075,
+        "focalLength": 42
+      },
+      "vignette": {
+        "offset": 1.05,
+        "darkness": 1.15
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "approach",
+      "startFrame": 1,
+      "endFrame": 36,
+      "camera": {
+        "feature": [
+          0,
+          0,
+          0.42
+        ],
+        "azimuth": -58,
+        "elevation": 18,
+        "distance": 2.15,
+        "lens": 50,
+        "entry": {
+          "feature": [
+            0,
+            0,
+            0.42
+          ],
+          "azimuth": -44,
+          "elevation": 30,
+          "distance": 4.3,
+          "lens": 40
+        }
+      },
+      "label": null
+    },
+    {
+      "id": "gauge",
+      "startFrame": 37,
+      "endFrame": 72,
+      "camera": {
+        "feature": [
+          0.064,
+          -0.046,
+          0.632
+        ],
+        "azimuth": -70,
+        "elevation": 5,
+        "distance": 0.52,
+        "lens": 55
+      },
+      "label": {
+        "eyebrow": "Charge",
+        "title": "Pressure gauge",
+        "body": "Reading inside the green band, or the unit is out of service. The value is captured with the record, never recalled afterwards."
+      }
+    },
+    {
+      "id": "lever",
+      "startFrame": 73,
+      "endFrame": 106,
+      "camera": {
+        "feature": [
+          0.005,
+          0,
+          0.694
+        ],
+        "azimuth": -74,
+        "elevation": 27,
+        "distance": 0.66,
+        "lens": 52
+      },
+      "label": {
+        "eyebrow": "Mechanism",
+        "title": "Lever and safety pin",
+        "body": "Pin seated, tamper seal intact, lever undamaged. A failed line item opens a corrective action with an owner and a due date."
+      }
+    },
+    {
+      "id": "hose",
+      "startFrame": 107,
+      "endFrame": 132,
+      "camera": {
+        "feature": [
+          -0.17,
+          -0.05,
+          0.4
+        ],
+        "azimuth": -132,
+        "elevation": 4,
+        "distance": 1.7,
+        "lens": 46
+      },
+      "label": {
+        "eyebrow": "Discharge path",
+        "title": "Hose and horn",
+        "body": "Checked for cracking, blockage and a secure coupling. Photographs attach to the record as it is created."
+      }
+    },
+    {
+      "id": "settle",
+      "startFrame": 133,
+      "endFrame": 150,
+      "camera": {
+        "feature": [
+          0,
+          0,
+          0.4
+        ],
+        "azimuth": -63,
+        "elevation": 12,
+        "distance": 2.05,
+        "lens": 52
+      },
+      "label": {
+        "eyebrow": "Result",
+        "title": "Signed, timestamped, immutable",
+        "body": "The inspector signs on the device. From that moment row-level security refuses every update and delete."
+      }
+    }
+  ]
+}

@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Deployment artifacts emitted by `npm run build:server` / `npm run deploy:gen`.
+    // The esbuild bundle is vendored third-party code; linting it is meaningless noise.
+    "deploy/generated/**",
   ]),
 ]);
 

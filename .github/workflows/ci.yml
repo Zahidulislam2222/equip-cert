@@ -12,7 +12,7 @@ on:
 
 jobs:
   lint-and-build:
-    name: Lint, Typecheck & Build
+    name: Config, Lint, Typecheck & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -27,8 +27,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify required env is present
+        # DEF-001: GitHub substitutes an empty string for a missing secret, so a build can
+        # go green while shipping blank AI/app config. Fail loudly instead.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_CONTENTFUL_SPACE_ID: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_SPACE_ID }}
+          NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN: ${{ secrets.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN }}
+          AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
+          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          missing=""
+          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY                      NEXT_PUBLIC_CONTENTFUL_SPACE_ID NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN                      AI_PROVIDER AI_MODEL_NAME AI_API_KEY; do
+            if [ -z "${!var}" ]; then missing="$missing $var"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required repository secrets:$missing"
+            exit 1
+          fi
+          echo "All required secrets are present."
+
+
+      - name: Config boundary (Rule 12)
+        run: npm run test:config
+
       - name: Lint
-        run: npx eslint app/ api/ --max-warnings 20
+        run: npm run lint
 
       - name: Build (includes TypeScript check)
         env:

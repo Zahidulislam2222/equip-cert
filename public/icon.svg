@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EquipCert">
+  <rect width="64" height="64" rx="14" fill="#100f0e"/>
+  <path d="M32 11 L49 17.4 V32.2 C49 42.4 41.6 49.8 32 53.4 C22.4 49.8 15 42.4 15 32.2 V17.4 Z"
+        fill="#ffc71a"/>
+  <path d="M23.5 31.8 L29.4 37.9 L41 25.6"
+        fill="none" stroke="#100f0e" stroke-width="5.4"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

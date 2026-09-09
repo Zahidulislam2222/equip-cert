@@ -1,0 +1,311 @@
+'use client';
+
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { cn } from '@/lib/utils';
+import { config } from '@/lib/config';
+import {
+  LayoutDashboard,
+  ClipboardCheck,
+  Wrench,
+  CalendarClock,
+  Users,
+  BarChart3,
+  Settings,
+  Shield,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  ScanLine,
+  Menu,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/shared/NotificationBell';
+import { canAccess } from '@/lib/stripe';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+const sidebarSpring = { type: 'spring' as const, stiffness: 300, damping: 30 };
+
+const managerNav = [
+  { href: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard, gate: null },
+  { href: '/app/inspections', label: 'Inspections', icon: ClipboardCheck, gate: null },
+  { href: '/app/equipment', label: 'Equipment', icon: Wrench, gate: null },
+  { href: '/app/schedule', label: 'Schedule', icon: CalendarClock, gate: 'scheduling' as const },
+  { href: '/app/team', label: 'Team', icon: Users, gate: 'team' as const },
+  { href: '/app/reports', label: 'Reports', icon: BarChart3, gate: 'reports' as const },
+  { href: '/app/settings', label: 'Settings', icon: Settings, gate: null },
+];
+
+const technicianNav = [
+  { href: '/app/inspect', label: 'New Inspection', icon: ScanLine, gate: null },
+  { href: '/app/inspections', label: 'My Inspections', icon: ClipboardCheck, gate: null },
+  { href: '/app/schedule', label: 'Schedule', icon: CalendarClock, gate: 'scheduling' as const },
+  { href: '/app/settings', label: 'Settings', icon: Settings, gate: null },
+];
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { profile, organization, signOut } = useAuth();
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const isTechnician = profile?.role === 'technician';
+  const orgPlan = organization?.plan || 'free';
+  const navItems = (isTechnician ? technicianNav : managerNav).filter(
+    (item) => !item.gate || canAccess(orgPlan, item.gate)
+  );
+
+  return (
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-background">
+      {/* Mobile overlay + sidebar */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              key="mobile-backdrop"
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              key="mobile-sidebar"
+              className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground lg:hidden"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={sidebarSpring}
+            >
+              {/* Logo */}
+              <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
+                  <Shield className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="overflow-hidden">
+                  <h1 className="text-lg font-bold text-sidebar-foreground truncate">
+                    {organization?.name || config.app.name}
+                  </h1>
+                  <p className="text-xs text-sidebar-foreground/60">
+                    {isTechnician ? 'Technician' : 'Manager'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Nav */}
+              <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'relative flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-200',
+                        isActive
+                          ? 'text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="nav-active-mobile"
+                          className="absolute inset-0 rounded-lg bg-sidebar-primary shadow-card"
+                          transition={sidebarSpring}
+                        />
+                      )}
+                      <Icon className="relative z-10 h-5 w-5 shrink-0" />
+                      <span className="relative z-10">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* User + Close */}
+              <div className="border-t border-sidebar-border p-3 space-y-2">
+                {profile && (
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold">
+                      {profile.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
+                      <p className="text-xs text-sidebar-foreground/60 capitalize">{profile.role}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={signOut}
+                    className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <motion.aside
+        className="hidden lg:flex flex-col bg-sidebar text-sidebar-foreground overflow-hidden"
+        animate={{ width: collapsed ? 64 : 256 }}
+        transition={sidebarSpring}
+      >
+        {/* Logo */}
+        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
+            <Shield className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div
+                key="logo-text"
+                className="overflow-hidden"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h1 className="text-lg font-bold text-sidebar-foreground truncate whitespace-nowrap">
+                  {organization?.name || config.app.name}
+                </h1>
+                <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap">
+                  {isTechnician ? 'Technician' : 'Manager'}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  'relative flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-200',
+                  isActive
+                    ? 'text-sidebar-primary-foreground'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                )}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-active"
+                    className="absolute inset-0 rounded-lg bg-sidebar-primary shadow-card"
+                    transition={sidebarSpring}
+                  />
+                )}
+                <Icon className="relative z-10 h-5 w-5 shrink-0" />
+                <AnimatePresence>
+                  {!collapsed && (
+                    <motion.span
+                      key="nav-label"
+                      className="relative z-10 whitespace-nowrap"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto' }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User + Collapse */}
+        <div className="border-t border-sidebar-border p-3 space-y-2">
+          <AnimatePresence>
+            {!collapsed && profile && (
+              <motion.div
+                key="user-info"
+                className="flex items-center gap-3 px-3 py-2"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold">
+                  {profile.full_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate whitespace-nowrap">{profile.full_name}</p>
+                  <p className="text-xs text-sidebar-foreground/60 capitalize whitespace-nowrap">{profile.role}</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden lg:flex text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </motion.aside>
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Top Bar */}
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 lg:px-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h2 className="text-lg font-semibold text-foreground capitalize">
+              {navItems.find((i) => i.href === pathname)?.label || 'Dashboard'}
+            </h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
+              {profile?.full_name?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto p-4 lg:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
