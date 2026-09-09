@@ -71,8 +71,11 @@ $$;
 
 GRANT EXECUTE ON FUNCTION app.owns_storage_path(TEXT) TO authenticated;
 
--- Supabase ships RLS enabled on storage.objects; assert it rather than assume it.
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- storage.objects is owned by `supabase_storage_admin`, not by the migration role, so it
+-- cannot be ALTERed from here — an attempt returns "must be owner of table objects"
+-- (SQLSTATE 42501). Supabase ships the table with RLS already enabled, and policies can be
+-- created against it, so there is nothing to assert. Verified after applying: see the
+-- rowsecurity check in tests/rls_isolation_test.mjs.
 
 DROP POLICY IF EXISTS evidence_read_own_org   ON storage.objects;
 DROP POLICY IF EXISTS evidence_insert_own_org ON storage.objects;

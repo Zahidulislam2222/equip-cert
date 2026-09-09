@@ -22,7 +22,8 @@
     "build:probe:motion": "esbuild tests/hero_motion_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/motion.js --log-level=warning --loader:.json=json",
     "test:schema": "node scripts/gen-plan-limits-sql.mjs --check",
     "gen:schema": "node scripts/gen-plan-limits-sql.mjs",
-    "test:deps": "node scripts/check-live-dependencies.mjs"
+    "test:deps": "node scripts/check-live-dependencies.mjs",
+    "test:rls": "node --test \"e2e/*.test.mjs\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
