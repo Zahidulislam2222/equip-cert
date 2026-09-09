@@ -33,6 +33,14 @@ export const config = {
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
   },
 
+  // Photo capture — client-side downscale applied before upload. A phone camera frame is
+  // 4–12 MB; shrinking here keeps requests inside ANALYZE_MAX_IMAGE_BYTES and cuts mobile
+  // data use. Quality is a percentage because env vars parse as integers.
+  capture: {
+    maxEdgePx: intEnv(process.env.NEXT_PUBLIC_CAPTURE_MAX_EDGE_PX, 1600),
+    jpegQualityPercent: intEnv(process.env.NEXT_PUBLIC_CAPTURE_JPEG_QUALITY, 85),
+  },
+
   // Geolocation — reverse geocoding provider and capture timeout (client-side)
   geo: {
     reverseGeocodeUrl:

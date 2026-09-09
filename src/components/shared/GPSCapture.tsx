@@ -26,23 +26,19 @@ export function GPSCapture({ onCapture, location }: GPSCaptureProps) {
     setError(null);
 
     try {
-      // Try Capacitor Geolocation first, fall back to browser API
-      let coords: { latitude: number; longitude: number; accuracy: number };
-
-      try {
-        const { Geolocation } = await import('@capacitor/geolocation');
-        const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
-        coords = position.coords;
-      } catch {
-        // Fallback to browser API
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: config.geo.gpsTimeoutMs,
-          });
+      // Browser Geolocation. The Capacitor plugin was removed with the Capacitor target;
+      // the mobile clients are separate Flutter apps and use the platform API directly.
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!('geolocation' in navigator)) {
+          reject(new Error('Geolocation is not available in this browser.'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: config.geo.gpsTimeoutMs,
         });
-        coords = position.coords;
-      }
+      });
+      const coords = position.coords;
 
       // Reverse geocode via the configured provider (default: Nominatim)
       let address: string | null = null;

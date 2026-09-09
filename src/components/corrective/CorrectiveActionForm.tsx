@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { AlertTriangle, Loader2, X, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Camera as CapCamera, CameraResultType } from '@capacitor/camera';
+import { capturePhoto } from '@/lib/capture';
 
 interface CorrectiveActionFormProps {
   inspectionId: number;
@@ -39,18 +39,13 @@ export function CorrectiveActionForm({
   ];
 
   const takePhoto = async () => {
-    try {
-      const image = await CapCamera.getPhoto({
-        quality: 80,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-      });
-      if (image.webPath) {
-        setPhotoUrl(image.webPath);
-      }
-    } catch {
-      // Camera cancelled
-    }
+    const photo = await capturePhoto();
+    if (!photo) return; // cancelled
+    // Release the previous preview before replacing it, or each retake leaks a blob.
+    setPhotoUrl((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return photo.objectUrl;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

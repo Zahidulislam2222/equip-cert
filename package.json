@@ -22,13 +22,7 @@
     "build:probe:motion": "esbuild tests/hero_motion_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/motion.js --log-level=warning --loader:.json=json"
   },
   "dependencies": {
-    "@capacitor/android": "^8.0.0",
-    "@capacitor/camera": "^8.0.0",
-    "@capacitor/cli": "^8.0.0",
-    "@capacitor/core": "^8.0.0",
-    "@capacitor/geolocation": "^8.2.0",
     "@google/generative-ai": "^0.24.1",
-    "@ionic/pwa-elements": "^3.3.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@react-pdf/renderer": "^4.3.2",
     "@stripe/stripe-js": "^9.1.0",

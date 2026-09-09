@@ -17,7 +17,7 @@ import { FadeInView } from "@/components/motion/FadeInView";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { contentfulClient } from "@/lib/contentful";
-import { Camera as CapCamera, CameraResultType } from "@capacitor/camera";
+import { capturePhoto } from "@/lib/capture";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { GPSCapture } from "@/components/shared/GPSCapture";
 import type { LocationData } from "@/components/shared/GPSCapture";
@@ -152,25 +152,18 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
 
   // --- 4. CAMERA ---
   const takePhoto = async () => {
-    try {
-      const image = await CapCamera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-      });
+    const photo = await capturePhoto();
+    if (!photo) return; // cancelled
 
-      if (image.webPath) {
-        setPhotoUrl(image.webPath);
-        const response = await fetch(image.webPath);
-        const blob = await response.blob();
-        setPhotoBlob(blob);
+    // Release the previous preview before replacing it, or each retake leaks a blob.
+    setPhotoUrl((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return photo.objectUrl;
+    });
+    setPhotoBlob(photo.blob);
 
-        if (isAiMode && checklist.length === 0) {
-          await analyzeWithAI(blob);
-        }
-      }
-    } catch {
-      // Camera cancelled
+    if (isAiMode && checklist.length === 0) {
+      await analyzeWithAI(photo.blob);
     }
   };
 

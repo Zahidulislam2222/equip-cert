@@ -47,11 +47,6 @@ service-account*.json
 *.tsbuildinfo
 next-env.d.ts
 
-# Android build artifacts (large, regenerated)
-android/app/build/
-android/.gradle/
-android/build/
-
 # IDE
 .idea/
 # .vscode/ is intentionally tracked: shared Explorer/TS settings for the team
