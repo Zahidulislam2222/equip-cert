@@ -8,18 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Clock, Loader2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface CorrectiveAction {
-  id: string;
-  inspection_id: number;
-  checklist_item_id: string;
-  description: string;
-  severity: 'critical' | 'major' | 'minor';
-  assigned_to: string | null;
-  due_date: string | null;
-  status: 'open' | 'in_progress' | 'resolved' | 'overdue';
-  resolution_notes: string | null;
-  created_at: string;
-}
+// Row shape from the generated schema; see src/lib/db.ts.
+import type { CorrectiveAction, CorrectiveStatus } from '@/lib/db';
 
 const severityColors: Record<string, string> = {
   critical: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
@@ -63,7 +53,7 @@ export function CorrectiveActionList() {
     }
   };
 
-  const updateStatus = async (id: string, newStatus: string) => {
+  const updateStatus = async (id: string, newStatus: CorrectiveStatus) => {
     const { error } = await supabase
       .from('corrective_actions')
       .update({

@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { signUp } from '@/lib/auth';
-import { Loader2, ShieldCheck, ArrowRight, CheckCircle, Building2 } from 'lucide-react';
+import { checkPassword, describeVerdict } from '@/lib/password-safety';
 import { config } from '@/lib/config';
+import { Loader2, ShieldCheck, ArrowRight, CheckCircle, Building2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SignupPage() {
@@ -23,6 +24,15 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
+      // Checked before the account is created, not after: Supabase's own leaked-password
+      // protection is a Pro feature, so this runs the same HaveIBeenPwned k-anonymity check
+      // client-side. See src/lib/password-safety.ts.
+      const verdict = await checkPassword(password);
+      if (!verdict.ok) {
+        setError(describeVerdict(verdict) ?? 'Choose a stronger password.');
+        return;
+      }
+
       await signUp(email, password, fullName, orgName);
       setIsComplete(true);
     } catch (err: unknown) {
@@ -191,10 +201,17 @@ export default function SignupPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={8}
+                      minLength={config.passwordSafety.minLength}
+                      autoComplete="new-password"
+                      aria-describedby="password-help"
                       className="w-full rounded-lg border border-input bg-card px-4 py-3.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                      placeholder="Minimum 8 characters"
+                      placeholder={`At least ${config.passwordSafety.minLength} characters`}
                     />
+                    <p id="password-help" className="text-xs text-muted-foreground">
+                      At least {config.passwordSafety.minLength} characters. A passphrase of a
+                      few unrelated words beats a short one with symbols. We check it against
+                      known breach lists without ever sending us your password.
+                    </p>
                   </div>
 
                   <div>

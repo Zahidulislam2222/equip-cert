@@ -1,5 +1,6 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
+import { asChecklist, type Inspection } from '@/lib/db';
 
 // Define styles for the PDF
 const styles = StyleSheet.create({
@@ -29,16 +30,14 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 30, left: 30, right: 30, textAlign: 'center', fontSize: 8, color: '#aaa' }
 });
 
-// Define the data shape
-interface InspectionData {
-  id: number;
-  equipment_name: string;
-  inspector_name: string;
-  created_at: string;
-  status: string;
-  photo_url: string | null;
-  checklist_data: { id: string; question: string; status: string }[];
-}
+/**
+ * The report takes a row straight from the schema, with `photo_url` replaced by a signed URL
+ * because the stored value is a private-bucket path that react-pdf cannot fetch.
+ *
+ * `checklist_data` is jsonb, so it is parsed rather than assumed to be an array. A record
+ * written by an older client used to be able to crash the report generator here.
+ */
+type InspectionData = Omit<Inspection, 'photo_url'> & { photo_url: string | null };
 
 export const InspectionReportPDF = ({ data }: { data: InspectionData }) => (
   <Document>
@@ -85,8 +84,8 @@ export const InspectionReportPDF = ({ data }: { data: InspectionData }) => (
         </View>
 
         {/* Table Body */}
-        {data.checklist_data && Array.isArray(data.checklist_data) ? (
-          data.checklist_data.map((item: { question: string; status: string }, i: number) => (
+        {asChecklist(data.checklist_data).length > 0 ? (
+          asChecklist(data.checklist_data).map((item, i) => (
             <View key={i} style={styles.tableRow}>
               <Text style={styles.colQuestion}>{item.question}</Text>
               <Text style={[styles.colStatus, item.status === 'pass' ? styles.pass : styles.fail]}>

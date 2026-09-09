@@ -4,6 +4,7 @@ import { ExternalLink, User, Calendar, Camera, Download, Loader2 } from "lucide-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import type { Inspection } from "@/lib/db";
 import { signedEvidenceUrl } from "@/lib/evidence";
 import { toast } from "sonner";
 import { pdf } from "@react-pdf/renderer"; // <--- Import PDF generator
@@ -21,17 +22,8 @@ const rowVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-// Define the shape of your Database Row
-interface Inspection {
-  id: number;
-  equipment_name: string;
-  inspector_name: string;
-  created_at: string;
-  status: string;
-  photo_url: string | null;
-  checklist_data: { id: string; question: string; status: string }[];
-}
-
+// Row shape from the generated schema; see src/lib/db.ts. checklist_data is jsonb, so it
+// arrives as Json and is parsed at the point of use rather than assumed to be an array.
 export function InspectionsTable() {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -19,6 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { contentfulClient } from "@/lib/contentful";
 import { capturePhoto } from "@/lib/capture";
 import { uploadEvidence } from "@/lib/evidence";
+import type { InspectionInsert } from "@/lib/db";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { GPSCapture } from "@/components/shared/GPSCapture";
 import type { LocationData } from "@/components/shared/GPSCapture";
@@ -34,11 +35,15 @@ interface InspectionScreenProps {
   onComplete: () => void;
 }
 
-interface ChecklistItem {
+// A type alias rather than an interface, deliberately. `checklist_data` is a jsonb column, so
+// the generated type is `Json`, whose object arm is an index signature. TypeScript treats a
+// type alias as having an implicit index signature and an interface as not having one, so an
+// `interface` here is rejected on assignment to Json even though the shape is identical.
+type ChecklistItem = {
   id: string;
   question: string;
   status: "pending" | "pass" | "fail";
-}
+};
 
 export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScreenProps) {
   const { profile, organization } = useAuth();
@@ -210,7 +215,7 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
         uploadedSignaturePath = await uploadEvidence('signature', orgId, sigBlob);
       }
 
-      const payload = {
+      const payload: InspectionInsert = {
         equipment_name: equipmentName,
         inspector_name: profile?.full_name || (isAiMode ? "AI Assistant" : "Unknown"),
         inspector_id: profile?.id || null,

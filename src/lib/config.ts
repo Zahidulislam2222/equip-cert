@@ -33,6 +33,16 @@ export const config = {
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
   },
 
+  // Password safety. Supabase's own leaked-password protection is a Pro-plan feature, so the
+  // same check runs against the same upstream corpus via the free k-anonymity range API.
+  // `minLength` must stay in step with `minimum_password_length` in supabase/config.toml —
+  // the database is the enforcer, this value only decides what the form says first.
+  passwordSafety: {
+    rangeUrl: process.env.NEXT_PUBLIC_PWNED_RANGE_URL || 'https://api.pwnedpasswords.com/range',
+    minLength: intEnv(process.env.NEXT_PUBLIC_PASSWORD_MIN_LENGTH, 12),
+    timeoutMs: intEnv(process.env.NEXT_PUBLIC_PWNED_TIMEOUT_MS, 4_000),
+  },
+
   // Evidence storage. The bucket is private (see DEF-017), so every view needs a signed URL.
   // The TTL is a real trade-off: too short and a slow PDF render or a background tab produces
   // a broken image, too long and a leaked link stays useful. Ten minutes covers a page view

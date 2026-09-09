@@ -1,26 +1,11 @@
 import { supabase } from './supabase';
 
-export type UserRole = 'admin' | 'manager' | 'technician';
+// Row shapes come from the generated schema types, not from a hand-written copy kept next to
+// the query. See src/lib/db.ts for why. Imported as well as re-exported: the signatures in
+// this file use them, and a bare `export ... from` would not bring them into scope here.
+import type { Profile, Organization, UserRole } from './db';
 
-export interface Profile {
-  id: string;
-  user_id: string;
-  org_id: string;
-  full_name: string;
-  role: UserRole;
-  qualifications: string | null;
-  avatar_url: string | null;
-  created_at: string;
-}
-
-export interface Organization {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null;
-  plan: 'free' | 'pro' | 'enterprise';
-  created_at: string;
-}
+export type { Profile, Organization, UserRole };
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase

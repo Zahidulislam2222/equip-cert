@@ -1,3 +1,4 @@
+import type { InspectionInsert } from './db';
 // Offline queue — stores inspection submissions in IndexedDB when offline, syncs when back online
 
 const DB_NAME = 'equipcert-offline';
@@ -28,7 +29,10 @@ function openDB(): Promise<IDBDatabase> {
 
 export interface QueuedSubmission {
   id?: number;
-  payload: Record<string, unknown>;
+  // Typed against the schema rather than Record<string, unknown>. The queue is the one place
+  // a submission is stored and replayed later, so an untyped payload here means a column
+  // rename ships and only fails for users who were offline when it happened.
+  payload: InspectionInsert;
   photoBlob?: Blob | null;
   timestamp: number;
   integrityHash?: string;
@@ -112,7 +116,7 @@ export async function getCachedChecklist(equipmentName: string): Promise<CachedC
 // --- Sync Logic ---
 
 export async function syncQueuedSubmissions(
-  submitFn: (payload: Record<string, unknown>, photoBlob?: Blob | null) => Promise<void>
+  submitFn: (payload: InspectionInsert, photoBlob?: Blob | null) => Promise<void>
 ): Promise<{ synced: number; failed: number }> {
   const items = await getQueuedSubmissions();
   let synced = 0;
