@@ -33,6 +33,14 @@ export const config = {
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
   },
 
+  // Evidence storage. The bucket is private (see DEF-017), so every view needs a signed URL.
+  // The TTL is a real trade-off: too short and a slow PDF render or a background tab produces
+  // a broken image, too long and a leaked link stays useful. Ten minutes covers a page view
+  // and a report download without outliving either.
+  storage: {
+    signedUrlTtlSeconds: intEnv(process.env.NEXT_PUBLIC_EVIDENCE_URL_TTL_SECONDS, 600),
+  },
+
   // Photo capture — client-side downscale applied before upload. A phone camera frame is
   // 4–12 MB; shrinking here keeps requests inside ANALYZE_MAX_IMAGE_BYTES and cuts mobile
   // data use. Quality is a percentage because env vars parse as integers.

@@ -196,6 +196,11 @@ CREATE TABLE IF NOT EXISTS public.corrective_actions (
   due_date             DATE,
   status               TEXT NOT NULL DEFAULT 'open'
                          CHECK (status IN ('open', 'in_progress', 'resolved', 'overdue')),
+  -- Evidence of the DEFECT, captured when the action is raised. Distinct from
+  -- resolution_photo_url, which is evidence of the FIX. The form has always sent this and no
+  -- schema ever had a column for it, so every corrective action with a photo failed to
+  -- insert with "column photo_url does not exist" (DEF-023).
+  defect_photo_url     TEXT,
   resolution_notes     TEXT,
   resolution_photo_url TEXT,
   resolved_at          TIMESTAMPTZ,

@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { AlertTriangle, Loader2, X, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { capturePhoto } from '@/lib/capture';
+import { uploadEvidence } from '@/lib/evidence';
 
 interface CorrectiveActionFormProps {
   inspectionId: number;
@@ -55,31 +56,29 @@ export function CorrectiveActionForm({
     setError('');
 
     try {
-      let uploadedPhotoUrl: string | null = null;
+      const orgId = organization?.id;
+      if (!orgId) throw new Error('No organization on this session.');
+
+      let defectPhotoPath: string | null = null;
 
       if (photoUrl) {
         const response = await fetch(photoUrl);
         const blob = await response.blob();
-        const fileName = `corrective-${Date.now()}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from('photos')
-          .upload(fileName, blob);
-
-        if (!uploadError) {
-          const { data } = supabase.storage.from('photos').getPublicUrl(fileName);
-          uploadedPhotoUrl = data.publicUrl;
-        }
+        // Private bucket, org-scoped path, random name — see src/lib/evidence.ts (DEF-017).
+        defectPhotoPath = await uploadEvidence('corrective', orgId, blob);
       }
 
       const { error: insertError } = await supabase.from('corrective_actions').insert({
-        organization_id: organization?.id,
+        organization_id: orgId,
         inspection_id: inspectionId,
         checklist_item_id: checklistItemId,
         description: description.trim(),
         severity,
         assigned_to: null,
-        photo_url: uploadedPhotoUrl,
-        status: severity === 'critical' ? 'open' : 'open',
+        // Was `photo_url`, a column no schema has ever had, so every corrective action with
+        // a photo failed to insert (DEF-023).
+        defect_photo_url: defectPhotoPath,
+        status: 'open',
       });
 
       if (insertError) throw insertError;

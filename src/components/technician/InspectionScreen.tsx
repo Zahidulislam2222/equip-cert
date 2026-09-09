@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { contentfulClient } from "@/lib/contentful";
 import { capturePhoto } from "@/lib/capture";
+import { uploadEvidence } from "@/lib/evidence";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { GPSCapture } from "@/components/shared/GPSCapture";
 import type { LocationData } from "@/components/shared/GPSCapture";
@@ -190,45 +191,34 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
-      let uploadedImageUrl: string | null = null;
-      let uploadedSignatureUrl: string | null = null;
+      // Evidence goes to the private bucket and the record stores a PATH, never a URL
+      // (DEF-017). Failure now throws instead of being swallowed: the old code did
+      // `if (!uploadError) { ...set the url... }`, which quietly filed an inspection with no
+      // photo attached and told nobody.
+      const orgId = organization?.id;
+      if (!orgId) throw new Error('No organization on this session; cannot file an inspection.');
 
-      // Upload photo
+      let uploadedImagePath: string | null = null;
+      let uploadedSignaturePath: string | null = null;
+
       if (photoBlob) {
-        const fileName = `inspection-${Date.now()}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from('photos')
-          .upload(fileName, photoBlob);
-
-        if (!uploadError) {
-          const { data: publicUrlData } = supabase.storage.from('photos').getPublicUrl(fileName);
-          uploadedImageUrl = publicUrlData.publicUrl;
-        }
+        uploadedImagePath = await uploadEvidence('inspection', orgId, photoBlob);
       }
 
-      // Upload signature
       if (signatureDataUrl) {
         const sigBlob = await fetch(signatureDataUrl).then((r) => r.blob());
-        const sigFileName = `signature-${Date.now()}.png`;
-        const { error: sigError } = await supabase.storage
-          .from('photos')
-          .upload(sigFileName, sigBlob);
-
-        if (!sigError) {
-          const { data: sigUrlData } = supabase.storage.from('photos').getPublicUrl(sigFileName);
-          uploadedSignatureUrl = sigUrlData.publicUrl;
-        }
+        uploadedSignaturePath = await uploadEvidence('signature', orgId, sigBlob);
       }
 
       const payload = {
         equipment_name: equipmentName,
         inspector_name: profile?.full_name || (isAiMode ? "AI Assistant" : "Unknown"),
         inspector_id: profile?.id || null,
-        organization_id: organization?.id || null,
+        organization_id: orgId,
         checklist_data: checklist,
         status: hasFailures ? "Action Required" : "Safe",
-        photo_url: uploadedImageUrl,
-        signature_url: uploadedSignatureUrl,
+        photo_url: uploadedImagePath,
+        signature_url: uploadedSignaturePath,
         location_lat: location?.lat || null,
         location_lng: location?.lng || null,
         location_address: location?.address || null,

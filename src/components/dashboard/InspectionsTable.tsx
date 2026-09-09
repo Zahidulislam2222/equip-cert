@@ -4,6 +4,8 @@ import { ExternalLink, User, Calendar, Camera, Download, Loader2 } from "lucide-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { signedEvidenceUrl } from "@/lib/evidence";
+import { toast } from "sonner";
 import { pdf } from "@react-pdf/renderer"; // <--- Import PDF generator
 import { InspectionReportPDF } from "./InspectionReportPDF"; // <--- Import the PDF layout
 
@@ -56,12 +58,38 @@ export function InspectionsTable() {
     fetchData();
   }, []);
 
+  /**
+   * Open one stored photo in a new tab.
+   *
+   * The window is opened synchronously and its location set afterwards. Awaiting the signed
+   * URL first and *then* calling window.open would put the call outside the user-gesture
+   * window, and every popup blocker would swallow it.
+   */
+  const openEvidence = (path: string) => {
+    const tab = window.open('', '_blank', 'noopener,noreferrer');
+    signedEvidenceUrl(path).then((url) => {
+      if (!tab) return;
+      if (url) {
+        tab.location.href = url;
+      } else {
+        tab.close();
+        toast.error('That photo could not be opened.');
+      }
+    });
+  };
+
   // --- PDF GENERATION LOGIC ---
   const generateAndDownloadPDF = async (inspection: Inspection) => {
     setDownloadingId(inspection.id);
     try {
+      // The record stores a private bucket path, and react-pdf fetches the image over the
+      // network while rendering. Sign it first or the report renders with a missing image.
+      const photoUrl = await signedEvidenceUrl(inspection.photo_url);
+
       // 1. Generate the blob using react-pdf
-      const blob = await pdf(<InspectionReportPDF data={inspection} />).toBlob();
+      const blob = await pdf(
+        <InspectionReportPDF data={{ ...inspection, photo_url: photoUrl }} />
+      ).toBlob();
       
       // 2. Create a hidden download link and click it
       const url = URL.createObjectURL(blob);
@@ -199,7 +227,8 @@ export function InspectionsTable() {
                             variant="ghost"
                             size="sm"
                             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={() => window.open(inspection.photo_url!, "_blank")}
+                            onClick={() => openEvidence(inspection.photo_url!)}
+                            aria-label={`View inspection photo for ${inspection.equipment_name}`}
                         >
                             <Camera className="h-4 w-4" />
                         </Button>

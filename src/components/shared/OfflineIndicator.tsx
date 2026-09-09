@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Wifi, WifiOff, CloudUpload, Loader2 } from 'lucide-react';
 import { getQueueCount, syncQueuedSubmissions } from '@/lib/offline';
 import { supabase } from '@/lib/supabase';
+import { uploadEvidence } from '@/lib/evidence';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -50,20 +51,23 @@ export function OfflineIndicator() {
     setIsSyncing(true);
     try {
       const result = await syncQueuedSubmissions(async (payload, photoBlob) => {
-        let uploadedImageUrl = null;
+        // The queued payload already carries the organization it was recorded against. Using
+        // it — rather than the session's current organization — keeps a submission filed
+        // under the tenant it was captured for, even if the user has since been moved.
+        // The queue is untyped storage (IndexedDB, Record<string, unknown>), so narrow rather
+        // than assert — a malformed queued row must fail this one submission, not the sync.
+        const orgId =
+          typeof payload.organization_id === 'string' ? payload.organization_id : null;
+        if (!orgId) throw new Error('Queued submission has no organization; cannot sync.');
 
+        let uploadedImagePath: string | null = null;
         if (photoBlob) {
-          const fileName = `inspection-${Date.now()}.jpg`;
-          const { error: uploadError } = await supabase.storage.from('photos').upload(fileName, photoBlob);
-          if (!uploadError) {
-            const { data } = supabase.storage.from('photos').getPublicUrl(fileName);
-            uploadedImageUrl = data.publicUrl;
-          }
+          uploadedImagePath = await uploadEvidence('inspection', orgId, photoBlob);
         }
 
         const { error } = await supabase.from('inspections').insert([{
           ...payload,
-          photo_url: uploadedImageUrl || payload.photo_url,
+          photo_url: uploadedImagePath ?? payload.photo_url,
         }]);
         if (error) throw error;
       });
