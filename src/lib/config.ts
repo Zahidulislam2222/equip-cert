@@ -59,6 +59,20 @@ export const config = {
     jpegQualityPercent: intEnv(process.env.NEXT_PUBLIC_CAPTURE_JPEG_QUALITY, 85),
   },
 
+  // Marketing and CRM tags. EMPTY BY DEFAULT, and empty means the tag does not exist — not
+  // that it exists and is disabled. Nothing here is read directly by a component; the only
+  // legal way to load one of these is <ConsentGatedScript>, which will not inject a tag until
+  // the visitor has granted the `marketing` category.
+  //
+  // Setting either of these values changes the site's legal position (ePrivacy Art. 5(3)
+  // consent becomes mandatory, Meta becomes a joint controller under CJEU C-40/17 Fashion ID,
+  // and a US transfer appears). See DEF-041 and the checklist in memory/RESUME.md — the
+  // documents that must change in the same commit are listed there.
+  marketing: {
+    metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID || '',
+    ghlLocationId: process.env.NEXT_PUBLIC_GHL_LOCATION_ID || '',
+  },
+
   // Consent banner entrance. The notice is a legal control, so it may not be conditional on
   // anything — but it may be *late*, and it should be: firing it into the first paint puts a
   // card over the hero before the page has finished introducing itself, which is how a

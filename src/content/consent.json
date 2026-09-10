@@ -1,5 +1,5 @@
 {
-  "documentVersion": "2026-09-10",
+  "documentVersion": "2026-09-10.2",
   "banner": {
     "heading": "Your privacy choices",
     "summary": "Storage the app needs to sign you in and hold offline inspections, plus one optional item that remembers your theme. No analytics, no ads, no trackers.",
@@ -10,7 +10,8 @@
     "manage": "Customise",
     "save": "Save choices",
     "policyLink": "Privacy Policy",
-    "rightsLink": "Exercise your privacy rights"
+    "rightsLink": "Exercise your privacy rights",
+    "noTrackingWithMarketing": "We use advertising and CRM tags from Meta and GoHighLevel. Under US state law that counts as sharing your personal information for cross-context behavioural advertising. Reject optional, or send a Global Privacy Control signal, and none of them load at all."
   },
   "gpc": {
     "heading": "Opt-Out Preference Signal Honored",
@@ -41,6 +42,13 @@
       "required": false,
       "description": "Remembers your light or dark theme choice and whether you have already seen the intro animation. Turning this off does not limit any feature.",
       "items": "theme, intro-seen flag"
+    },
+    {
+      "id": "marketing",
+      "name": "Advertising and CRM",
+      "required": false,
+      "description": "Loads advertising and customer-relationship tags from Meta and GoHighLevel, which build a profile of your visit across sites. Nothing loads until you allow it here, and turning it off removes what they stored. No feature depends on this.",
+      "items": "Meta pixel (_fbp, _fbc), GoHighLevel tracking"
     }
   ]
 }

@@ -80,6 +80,18 @@ const DECISION_BUTTON = 'h-8 w-full rounded-md px-2 text-[11px]';
 // and this entry must come out in the same commit.
 const NO_OPTIONAL_STORAGE_ROUTES = new Set(['/']);
 
+// The exemption is CONDITIONAL, and this is the condition. Configure a Meta pixel or a
+// GoHighLevel tag and the landing page starts wanting optional storage, so the premise above
+// stops being true and the notice must come back — automatically, in the same deploy, without
+// anyone remembering to delete a line. A comment saying "remember to re-enable this" is how
+// that gets missed; a boolean derived from the same config the tags read cannot be missed.
+//
+// Fail-closed either way: with no banner on `/` a visitor can never grant `marketing`, so
+// ConsentGatedScript would never inject the tag. The wrong outcome would be a silently dead
+// pixel rather than an unlawful one — but dead is still wrong, so it is fixed here.
+const MARKETING_TAGS_CONFIGURED =
+  config.marketing.metaPixelId !== '' || config.marketing.ghlLocationId !== '';
+
 export function CookieConsent() {
   const pathname = usePathname();
   const { profile, organization } = useAuth();
@@ -134,7 +146,7 @@ export function CookieConsent() {
   // GPC signal is still recorded and any optional storage a previous session left behind is
   // still purged. Only the card waits for a route where the question is real — so nothing that
   // protects the visitor is skipped, just the interruption that protects nothing.
-  if (NO_OPTIONAL_STORAGE_ROUTES.has(pathname)) return null;
+  if (!MARKETING_TAGS_CONFIGURED && NO_OPTIONAL_STORAGE_ROUTES.has(pathname)) return null;
 
   if (showGpcNotice) {
     return (
@@ -198,7 +210,9 @@ export function CookieConsent() {
               {consentCopy.banner.body}
             </p>
             <p className="mt-2 text-[11px] font-medium leading-relaxed text-foreground">
-              {consentCopy.banner.noTracking}
+              {MARKETING_TAGS_CONFIGURED
+                ? consentCopy.banner.noTrackingWithMarketing
+                : consentCopy.banner.noTracking}
             </p>
 
             <ul className="mt-3 space-y-3">

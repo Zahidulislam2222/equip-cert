@@ -99,12 +99,69 @@ export function writeConsent(
   if (decision.categories.preferences === false) {
     purgePreferenceStorage();
   }
+  // Same rule, higher stakes: a withdrawn marketing consent that leaves `_fbp` on the device
+  // is not a withdrawal, it is a promise of one.
+  if (decision.categories[MARKETING_CATEGORY_ID] === false) {
+    purgeMarketingStorage();
+  }
+  try {
+    window.dispatchEvent(new CustomEvent(CONSENT_CHANGED_EVENT, { detail: decision }));
+  } catch {
+    /* no window (SSR) — nothing is listening there anyway */
+  }
   return decision;
 }
 
 /** Everything the optional "preferences" category is allowed to store. */
 const PREFERENCE_KEYS = ['theme'] as const;
 const PREFERENCE_SESSION_KEYS = ['ec:intro-played'] as const;
+
+/** The category that gates every third-party advertising / CRM tag. */
+export const MARKETING_CATEGORY_ID = 'marketing';
+
+/**
+ * Fired after any decision is written, so anything gated on consent reacts in THIS tab.
+ *
+ * The `storage` event deliberately does not fire in the tab that caused the change, so a
+ * component listening only for `storage` would keep a withdrawn tag loaded until reload. A
+ * withdrawal that takes effect on the next page view is not withdrawal.
+ */
+export const CONSENT_CHANGED_EVENT = 'equipcert:consent-changed';
+
+/**
+ * Cookies the marketing tags set, which withdrawal must actually remove.
+ *
+ * `_fbp` and `_fbc` are Meta's browser and click identifiers. Removing the script tag without
+ * removing these leaves the identifier on the device and readable on the next Meta request —
+ * "we stopped loading it" is not withdrawal, and Art. 7(3) requires withdrawal to be as easy
+ * as granting, which means as EFFECTIVE as granting.
+ *
+ * Set on the registrable domain, so deletion is attempted per-path and per-domain scope; a
+ * cookie written for `.example.com` is not removed by a delete scoped to `www.example.com`.
+ */
+const MARKETING_COOKIES = ['_fbp', '_fbc'] as const;
+
+/** Delete the marketing tags' cookies across the scopes they could have been set on. */
+export function purgeMarketingStorage(): void {
+  if (typeof document === 'undefined') return;
+  const host = window.location.hostname;
+  // "a.b.example.com" -> ["a.b.example.com", "b.example.com", "example.com"]. Walking up is
+  // the only reliable way to clear a cookie whose Domain attribute we cannot read back.
+  const parts = host.split('.');
+  const domains = [undefined as string | undefined];
+  for (let i = 0; i < parts.length - 1; i += 1) domains.push(`.${parts.slice(i).join('.')}`);
+
+  for (const name of MARKETING_COOKIES) {
+    for (const domain of domains) {
+      const scope = domain ? `; domain=${domain}` : '';
+      try {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${scope}`;
+      } catch {
+        /* nothing to remove, or a scope this document may not write */
+      }
+    }
+  }
+}
 
 /** Remove optional storage. Called on withdrawal and on a GPC-forced opt-out. */
 export function purgePreferenceStorage(): void {
