@@ -10,7 +10,7 @@
     "lint": "eslint src/ api/ deploy/ --max-warnings 20",
     "test:config": "node scripts/check-config-boundary.mjs",
     "test:model": "python tests/glb_structure_test.py",
-    "test": "npm run test:config && npm run test:schema",
+    "test": "npm run test:config && npm run test:schema && npm run test:unit",
     "export:model": "\"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe\" -b --factory-startup --python scripts/blender/extinguisher.py -- --mode glb --out public/media/extinguisher.glb",
     "build:probe": "esbuild tests/model_render_probe.ts --bundle --format=iife --target=es2022 --outfile=out/probe/probe.js --log-level=warning --loader:.json=json",
     "build:server": "esbuild deploy/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=deploy/generated/server.cjs --log-level=warning",
@@ -26,7 +26,8 @@
     "test:rls": "node --test \"e2e/*.test.mjs\"",
     "gen:types": "npx --silent supabase gen types typescript --linked > src/lib/database.types.ts",
     "test:types": "node scripts/check-generated-types.mjs",
-    "test:migrations": "node scripts/check-migrations-applied.mjs"
+    "test:migrations": "node scripts/check-migrations-applied.mjs",
+    "test:unit": "node --test \"unit/*.test.mjs\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
