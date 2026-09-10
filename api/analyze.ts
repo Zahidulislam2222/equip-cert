@@ -75,7 +75,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const ai = createAIProvider(provider, model, apiKey);
     const data = await ai.analyzeImage(image, mimeType);
 
-    return res.status(200).json(data);
+    // EU AI Act Art. 50(1) — the caller must be able to disclose that this result is
+    // machine-generated, and the inspection record must carry which system generated it.
+    // Provenance is stamped HERE because only the server knows which provider and model ran;
+    // a client-asserted value would be traceability theatre. `disclosedAt` is server-generated
+    // for the same reason every other compliance timestamp in this schema is.
+    return res.status(200).json({
+      ...data,
+      provenance: {
+        aiAssisted: true,
+        provider,
+        model,
+        disclosedAt: new Date().toISOString(),
+      },
+    });
   } catch (error) {
     console.error('AI Error:', error);
     return res.status(500).json({ error: 'Analysis failed. Please try again.' });

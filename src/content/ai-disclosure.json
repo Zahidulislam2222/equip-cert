@@ -1,0 +1,22 @@
+{
+  "documentVersion": "2026-09-10",
+  "regulation": "Regulation (EU) 2024/1689 (Artificial Intelligence Act), Article 50",
+  "badge": {
+    "label": "AI-generated",
+    "tooltip": "This content was produced by an automated system, not by a person."
+  },
+  "inline": {
+    "heading": "AI-assisted result",
+    "body": "An automated system analysed your photo and suggested the equipment details and checklist below. It can be wrong. You are the inspector of record — review every line and correct anything that does not match the equipment in front of you.",
+    "action": "Your signature attests to the corrected result, not to the suggestion."
+  },
+  "record": {
+    "heading": "Automated processing was used",
+    "body": "Parts of this inspection record were generated with AI assistance. The provider and model are recorded with the inspection for traceability."
+  },
+  "consent": {
+    "heading": "Photo analysis by a third-party AI provider",
+    "body": "When AI assistance is enabled, inspection photos are sent to a third-party model provider for analysis. Those providers are located in the United States. You can complete inspections without AI assistance.",
+    "purpose": "ai_processing"
+  }
+}

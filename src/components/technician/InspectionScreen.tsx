@@ -26,6 +26,8 @@ import type { LocationData } from "@/components/shared/GPSCapture";
 import { SignaturePad } from "@/components/shared/SignaturePad";
 import { CorrectiveActionForm } from "@/components/corrective/CorrectiveActionForm";
 import { queueSubmission } from "@/lib/offline";
+import { AiDisclosurePanel } from "@/components/shared/AiDisclosure";
+import { isAiProvenance, toProvenanceColumns, type AiProvenance } from "@/lib/compliance/ai-act";
 import { supabase as supabaseClient } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -68,6 +70,10 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(!isAiMode);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // AI Act Art. 50 provenance for this inspection. Null means no AI was involved,
+  // which is a real state on the manual path — not a missing value.
+  const [aiProvenance, setAiProvenance] = useState<AiProvenance | null>(null);
 
   // --- 1. FETCH FROM CONTENTFUL ---
   const fetchChecklistFromContentful = async (nameToSearch: string) => {
@@ -142,6 +148,11 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
         const data = await response.json();
 
         if (data.equipmentName) {
+          // Validated, not cast — this crossed a network boundary. If the server ever stops
+          // stamping provenance we record no AI claim rather than a fabricated one.
+          if (isAiProvenance(data.provenance)) {
+            setAiProvenance(data.provenance);
+          }
           setEquipmentName(data.equipmentName);
           await fetchChecklistFromContentful(data.equipmentName);
         } else {
@@ -217,11 +228,18 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
 
       const payload: InspectionInsert = {
         equipment_name: equipmentName,
-        inspector_name: profile?.full_name || (isAiMode ? "AI Assistant" : "Unknown"),
+        // The inspector of record is always the human who signed. Naming the AI here would
+        // put a machine on a safety document as the responsible inspector, which NFPA 10
+        // and OSHA 1910.157 both require to be a qualified person. AI involvement is
+        // recorded in the ai_* provenance columns, which is where it belongs.
+        inspector_name: profile?.full_name || "Unknown",
         inspector_id: profile?.id || null,
         organization_id: orgId,
         checklist_data: checklist,
         status: hasFailures ? "Action Required" : "Safe",
+        // AI Act Art. 50 provenance. The database CHECK `ai_provenance_is_complete` rejects a
+        // half-filled set, so this spreads all four columns together or all four as null.
+        ...toProvenanceColumns(aiProvenance),
         photo_url: uploadedImagePath,
         signature_url: uploadedSignaturePath,
         location_lat: location?.lat || null,
@@ -332,6 +350,11 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
         <FadeInView delay={0.05}>
           <GPSCapture onCapture={setLocation} location={location} />
         </FadeInView>
+
+        {/* AI Act Art. 50(1) disclosure. Rendered whenever an automated system produced any
+            of the content below, before the checklist the technician is about to rely on and
+            sign. Not dismissible, not animated in — see AiDisclosure.tsx. */}
+        {aiProvenance && <AiDisclosurePanel provenance={aiProvenance} />}
 
         {/* Checklist */}
         <div className="space-y-3">
