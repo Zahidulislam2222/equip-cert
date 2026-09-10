@@ -17,6 +17,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import analyzeHandler from '../api/analyze';
+import dsarHandler from '../api/dsar';
 import stripeWebhookHandler from '../api/webhooks/stripe';
 import { serverConfig } from '../src/lib/config';
 
@@ -71,6 +72,24 @@ const CACHEABLE_ASSET_EXTENSIONS = new Set([
  * re-serialised object silently breaks every webhook, so these paths are never JSON-parsed.
  */
 const RAW_BODY_ROUTES = new Set(['/api/webhooks/stripe']);
+
+/**
+ * The API surface, as a table rather than a chain of `if (pathname === ...)`.
+ *
+ * On Vercel every file under `api/` is a route by existence, so adding one is adding a file.
+ * Here it has to be declared, and a chain of equality checks meant declaring it in two places —
+ * the dispatch condition and the handler selection — with nothing to notice when only one of
+ * them was updated. A table has exactly one place to add a route and one place to forget it.
+ *
+ * Everything not in this map that starts with /api/ is a genuine 404, never the SPA shell.
+ */
+type ApiHandler = (req: VercelRequest, res: VercelResponse) => unknown | Promise<unknown>;
+
+const API_ROUTES = new Map<string, ApiHandler>([
+  ['/api/analyze', analyzeHandler],
+  ['/api/dsar', dsarHandler],
+  ['/api/webhooks/stripe', stripeWebhookHandler],
+]);
 
 /** Read the request body with a hard byte ceiling, so a large upload cannot exhaust memory. */
 function readBody(req: IncomingMessage): Promise<Buffer> {
@@ -328,7 +347,8 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (pathname === '/api/analyze' || pathname === '/api/webhooks/stripe') {
+    const apiHandler = API_ROUTES.get(pathname);
+    if (apiHandler) {
       let vreq: VercelRequest;
       try {
         vreq = await decorateRequest(req, pathname, url.searchParams);
@@ -342,8 +362,7 @@ const server = createServer(async (req, res) => {
         throw err;
       }
       const vres = decorateResponse(res);
-      const handler = pathname === '/api/analyze' ? analyzeHandler : stripeWebhookHandler;
-      await handler(vreq, vres);
+      await apiHandler(vreq, vres);
       if (!res.writableEnded) res.end();
       return;
     }

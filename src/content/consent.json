@@ -8,7 +8,8 @@
     "rejectAll": "Reject optional",
     "manage": "Choose individually",
     "save": "Save choices",
-    "policyLink": "Privacy Policy"
+    "policyLink": "Privacy Policy",
+    "rightsLink": "Exercise your privacy rights"
   },
   "gpc": {
     "heading": "Opt-Out Preference Signal Honored",

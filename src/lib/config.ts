@@ -100,6 +100,17 @@ export const serverConfig = {
     rateWindowMs: intEnv(process.env.ANALYZE_RATE_WINDOW_MS, 60 * 60 * 1000),
     maxImageBytes: intEnv(process.env.ANALYZE_MAX_IMAGE_BYTES, 10 * 1024 * 1024),
   },
+  // Operational limits for the /api/dsar intake endpoint.
+  //
+  // Far tighter than /api/analyze, and keyed on the address rather than the account, because
+  // this endpoint is reachable without authentication by design — the data subjects most likely
+  // to use it are the ones who no longer have an account. A handful of filings an hour from one
+  // address covers every legitimate use; a partial unique index in the database is the backstop
+  // that a per-process limiter cannot be.
+  dsar: {
+    rateLimit: intEnv(process.env.DSAR_RATE_LIMIT, 5),
+    rateWindowMs: intEnv(process.env.DSAR_RATE_WINDOW_MS, 60 * 60 * 1000),
+  },
   // ---------------------------------------------------------------------------------
   // Capacity tier.
   //

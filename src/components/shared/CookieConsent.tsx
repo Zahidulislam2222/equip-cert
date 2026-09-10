@@ -220,6 +220,12 @@ export function CookieConsent() {
           automatically.{' '}
           <a href="/privacy" className="underline">
             {consentCopy.banner.policyLink}
+          </a>{' · '}
+          {/* The banner is where most people first learn they have rights here, so it is where
+              the control to exercise them has to be reachable — GDPR Art. 12(2) is about
+              facilitating the right, and a link two pages away facilitates nothing. */}
+          <a href="/privacy/requests" className="underline">
+            {consentCopy.banner.rightsLink}
           </a>
         </p>
       </div>

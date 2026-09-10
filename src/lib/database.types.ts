@@ -220,6 +220,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           due_at: string
+          handled_by: string | null
           id: string
           notes: string | null
           organization_id: string | null
@@ -227,8 +228,10 @@ export type Database = {
           refusal_reason: string | null
           regime: Database["public"]["Enums"]["dsr_regime"]
           request_type: Database["public"]["Enums"]["dsr_type"]
+          source: string
           status: Database["public"]["Enums"]["dsr_status"]
           subject_email: string
+          subject_message: string | null
           subject_user_id: string | null
           verification_method: string | null
           verified_at: string | null
@@ -236,6 +239,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           due_at: string
+          handled_by?: string | null
           id?: string
           notes?: string | null
           organization_id?: string | null
@@ -243,8 +247,10 @@ export type Database = {
           refusal_reason?: string | null
           regime?: Database["public"]["Enums"]["dsr_regime"]
           request_type: Database["public"]["Enums"]["dsr_type"]
+          source?: string
           status?: Database["public"]["Enums"]["dsr_status"]
           subject_email: string
+          subject_message?: string | null
           subject_user_id?: string | null
           verification_method?: string | null
           verified_at?: string | null
@@ -252,6 +258,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           due_at?: string
+          handled_by?: string | null
           id?: string
           notes?: string | null
           organization_id?: string | null
@@ -259,13 +266,22 @@ export type Database = {
           refusal_reason?: string | null
           regime?: Database["public"]["Enums"]["dsr_regime"]
           request_type?: Database["public"]["Enums"]["dsr_type"]
+          source?: string
           status?: Database["public"]["Enums"]["dsr_status"]
           subject_email?: string
+          subject_message?: string | null
           subject_user_id?: string | null
           verification_method?: string | null
           verified_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "data_subject_requests_handled_by_fkey"
+            columns: ["handled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "data_subject_requests_organization_id_fkey"
             columns: ["organization_id"]

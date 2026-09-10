@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { config } from '@/lib/config';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { ConsentControls } from '@/components/shared/ConsentControls';
+import { PrivacyRequestQueue } from '@/components/shared/PrivacyRequestQueue';
 import { MotionPage } from '@/components/motion/MotionPage';
 import { StaggerContainer, StaggerItem } from '@/components/motion/StaggerGrid';
 
@@ -42,6 +43,13 @@ export default function SettingsPage() {
         {/* Privacy choices — the control the banner promises exists (DEF-029). */}
         <StaggerItem>
           <ConsentControls />
+        </StaggerItem>
+
+        {/* The other half of the DSAR flow. The public form starts a statutory clock; this is
+            where somebody has to answer it. Renders nothing for non-admins, and RLS refuses the
+            rows regardless — the component only decides whether a card is drawn. */}
+        <StaggerItem className="md:col-span-2">
+          <PrivacyRequestQueue />
         </StaggerItem>
 
         {/* Organization Card */}

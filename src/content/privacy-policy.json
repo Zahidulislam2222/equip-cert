@@ -1,0 +1,207 @@
+{
+  "$comment": [
+    "Single owner of the privacy policy text (global Rule 12). No component restates any of it.",
+    "",
+    "documentVersion is the date the WORDING last changed, hand-edited when it does. The page it",
+    "replaced rendered `new Date()` into 'Last updated', so the policy claimed to have been",
+    "revised on whatever day you happened to load it. A transparency notice whose date is",
+    "generated at read time cannot support the one thing a date is for: showing what a data",
+    "subject was told, and when.",
+    "",
+    "PLACEHOLDERS IN SQUARE BRACKETS ARE DELIBERATE and were chosen by the project owner. This",
+    "is a demonstration product with no incorporated controller, and inventing a legal entity,",
+    "a postal address or a mailbox that does not exist would be worse than an obvious blank —",
+    "GDPR Art. 13(1)(a) requires the controller's real identity, and a contact address that",
+    "bounces is a failure to provide it, not a formality. Fill these in before going live."
+  ],
+  "documentVersion": "2026-09-10",
+  "effectiveDate": "2026-09-10",
+
+  "controller": {
+    "legalName": "[CONTROLLER LEGAL NAME]",
+    "address": "[CONTROLLER REGISTERED ADDRESS]",
+    "email": "[PRIVACY CONTACT EMAIL]",
+    "euRepresentative": "[EU ARTICLE 27 REPRESENTATIVE, IF THE CONTROLLER IS NOT ESTABLISHED IN THE EU]",
+    "dpo": "No Data Protection Officer is appointed. Article 37 requires one only where processing is by a public authority, or where core activities involve large-scale regular and systematic monitoring, or large-scale processing of special-category data. None applies here. This is recorded as a reasoned position rather than left unstated."
+  },
+
+  "intro": "This policy explains what personal data we collect, why, on what legal basis, how long we keep it, and what you can do about it. It covers the EU and UK General Data Protection Regulation, the California Consumer Privacy Act as amended by the CPRA, and the US state privacy laws modelled on it.",
+
+  "sections": [
+    {
+      "id": "who-we-are",
+      "heading": "Who is responsible for your data",
+      "paragraphs": [
+        "The controller is the organisation named at the top of this policy. Where you use this product through your employer, your employer is the controller of the inspection records their technicians create, and we act as their processor for that data. We remain the controller of your account and of the operation of the service itself.",
+        "That split matters in practice: a request about an inspection record usually has to be answered by the organisation that created it, and we will route it to them rather than acting unilaterally on their records."
+      ]
+    },
+    {
+      "id": "what-we-collect",
+      "heading": "What we collect, why, and on what legal basis",
+      "paragraphs": [
+        "Every category below states the GDPR Article 6 basis relied on. \"Legitimate interests\" is only claimed where a balancing test was actually done, and the interest is named so you can object to it under Article 21."
+      ],
+      "table": {
+        "columns": ["Data", "Why", "Legal basis (GDPR Art. 6)"],
+        "rows": [
+          [
+            "Account data — name, email address, organisation, role, qualifications",
+            "To give you access, to place you in your organisation, and to name the qualified person on an inspection record as safety rules require",
+            "Art. 6(1)(b) — performance of a contract"
+          ],
+          [
+            "Inspection data — equipment photographs, checklist answers, GPS coordinates, digital signature, timestamps",
+            "To produce the inspection record, which is the product",
+            "Art. 6(1)(b), and Art. 6(1)(c) where a legal record-keeping duty applies"
+          ],
+          [
+            "Photographs sent for AI analysis",
+            "To pre-fill the checklist with a suggested equipment type, serial number and condition",
+            "Art. 6(1)(b) — the technician confirms or corrects every suggestion before signing"
+          ],
+          [
+            "Authentication and security data — sign-in events, refresh tokens, IP address on privacy requests",
+            "To keep accounts secure, to rate-limit abuse, and to be able to investigate a suspected compromise",
+            "Art. 6(1)(f) — our legitimate interest in the security of the service and of your data"
+          ],
+          [
+            "Payment data",
+            "To manage a subscription. Card numbers are handled by the payment processor and never reach our systems",
+            "Art. 6(1)(b)"
+          ],
+          [
+            "Cookie and local storage preferences",
+            "To remember a theme choice and whether an intro animation has played",
+            "Consent — Art. 6(1)(a), and consent under the ePrivacy Directive for the storage itself"
+          ]
+        ]
+      },
+      "notes": [
+        "We do not use analytics, advertising or third-party tracking, so there is no such category to disclose. If that ever changes, this policy changes first and consent is asked for before anything is set.",
+        "We do not knowingly collect data from children. The product is used by qualified technicians at work."
+      ]
+    },
+    {
+      "id": "ai",
+      "heading": "Automated analysis of photographs",
+      "paragraphs": [
+        "When a technician photographs a piece of equipment, that photograph is sent to a third-party vision model, which returns suggestions: a likely equipment type, a possible serial number, an apparent condition. The technician then works through the checklist item by item and signs.",
+        "The signature is the operative act. The record that is stored, and that an inspector or insurer relies on, is the technician's checklist — not the model's output. The technician is the inspector of record and is named as such; the AI is never named as the inspector.",
+        "This is not automated decision-making within the meaning of Article 22. Nothing is decided by the model; a qualified human decides, having seen and been able to change every suggestion.",
+        "Where any part of a record was AI-assisted, that fact is disclosed to the technician before they sign, and the record itself stores which provider and model produced the suggestion. This satisfies Article 50(1) of the EU AI Act. Our classification memo, including the obligation we have not yet met, is published at docs/compliance/ai-act-classification.md."
+      ]
+    },
+    {
+      "id": "sharing",
+      "heading": "Who we share it with",
+      "paragraphs": [
+        "We do not sell personal data and we do not share it for cross-context behavioural advertising, as those terms are defined in the CCPA. We have never done so.",
+        "The current sub-processor list, with each one's role, location and transfer mechanism, is maintained at docs/compliance/sub-processors.md. In summary: a database and authentication platform, a vision model provider, a content platform for checklist templates, hosting, and a payment processor if a subscription is active.",
+        "We also disclose inspection records to your own organisation's managers and administrators — that is the product working as intended — and to a regulator where we are legally required to, which is not something you can opt out of."
+      ]
+    },
+    {
+      "id": "transfers",
+      "heading": "Where your data goes",
+      "paragraphs": [
+        "The primary database and file storage are hosted in the European Union (Frankfurt). Inspection records rest there.",
+        "The vision model providers are established in the United States, so a photograph submitted for analysis is transferred there. That transfer relies on the European Commission's Standard Contractual Clauses, and where the provider is certified, on the EU-US Data Privacy Framework. The transfer is limited to the photograph submitted for analysis; it is not where the record lives.",
+        "You may ask us for a copy of the transfer safeguards in place."
+      ]
+    },
+    {
+      "id": "retention",
+      "heading": "How long we keep it",
+      "paragraphs": [
+        "Retention is set by the shortest period that lets us do the job and meet a legal duty, not by the longest we could argue for."
+      ],
+      "table": {
+        "columns": ["Data", "Kept for", "Why"],
+        "rows": [
+          [
+            "Fire extinguisher inspection and maintenance records",
+            "One year after the last entry, or the life of the shell, whichever is shorter",
+            "29 CFR 1910.157(e)(3). Where NFPA 10 or a local fire code sets a longer period for a particular record, the longer period applies."
+          ],
+          [
+            "Inspection records your organisation asks us to keep longer",
+            "As instructed by that organisation",
+            "They are the controller of their own records and may have insurance or contractual reasons of their own"
+          ],
+          [
+            "Account data",
+            "While the account is active, then deleted within 30 days of closure",
+            "No longer needed once the contract ends"
+          ],
+          [
+            "Sign-in and security events",
+            "12 months",
+            "Long enough to investigate a compromise, short enough not to become a second dataset worth stealing"
+          ],
+          [
+            "Consent records",
+            "For as long as the consent is relied on, plus the limitation period afterwards",
+            "Art. 7(1) requires us to be able to demonstrate consent was given, which is impossible if the record is deleted with it"
+          ],
+          [
+            "Data subject request records",
+            "Two years from completion",
+            "To show a request was received, verified and answered within the deadline"
+          ],
+          [
+            "Payment records",
+            "As required by tax law in the relevant jurisdiction",
+            "A statutory duty we cannot shorten"
+          ]
+        ]
+      },
+      "notes": [
+        "A correction worth stating plainly: an earlier version of this policy said inspection records were kept for five years under 29 CFR 1904.33. That citation was wrong. 1904.33 governs retention of OSHA injury and illness logs, which is a different record with a different purpose. Fire extinguisher records are governed by 1910.157(e)(3), and the period is one year, not five. Keeping personal data five times longer than the law requires is not caution; it is unlawful under the storage limitation principle in Article 5(1)(e)."
+      ]
+    },
+    {
+      "id": "rights",
+      "heading": "Your rights",
+      "paragraphs": [
+        "Under the GDPR you have the right of access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), data portability (Art. 20), and the right to object to processing based on legitimate interests (Art. 21). Where processing rests on consent you may withdraw it at any time (Art. 7(3)), and withdrawal is as easy as giving it — the control is in Settings and in the cookie banner.",
+        "Under the CCPA as amended you have the right to know, to delete, to correct, to opt out of sale or sharing, to limit use of sensitive personal information, and not to be discriminated against for exercising any of them. We do not sell or share, and we do not use sensitive personal information for purposes that trigger the limitation right, but an opt-out request is still recorded and honoured.",
+        "Use the request form linked below. You do not need an account and you will not be charged. We answer within one month under the GDPR, or 45 days under the US state laws — whichever you invoke, and where both could apply we hold ourselves to the shorter one.",
+        "Before we release or delete anything we must be reasonably satisfied you are who you say you are (Art. 12(6)). That step exists to stop someone else exercising your rights in your name.",
+        "If we refuse a request we will tell you why, and you may complain to a supervisory authority. In the EU that is the authority in your country of residence, work, or where the alleged infringement happened; in the UK it is the Information Commissioner's Office."
+      ],
+      "cta": { "label": "Make a privacy request", "href": "/privacy/requests" }
+    },
+    {
+      "id": "gpc",
+      "heading": "Global Privacy Control",
+      "paragraphs": [
+        "If your browser sends a Global Privacy Control signal we treat it as an opt-out of any optional processing, automatically, without asking you again. From 1 January 2026 California requires that you be able to confirm the signal was received, so the banner tells you when it has been detected and what it did.",
+        "In practice, because we run no analytics or advertising, the signal's effect here is limited to optional local storage — which is exactly what we say it does, rather than claiming a broader effect to sound better."
+      ]
+    },
+    {
+      "id": "security",
+      "heading": "Security",
+      "paragraphs": [
+        "Data is encrypted in transit with TLS and at rest by the hosting platform. Every table is protected by database-level row security, so a query issued on behalf of one organisation cannot return another's rows even if application code is wrong. Signed inspection records cannot be modified or deleted. Evidence photographs and signatures are in private storage and are only reachable through short-lived signed links. The site is served with a Content Security Policy and HSTS.",
+        "Two things we will not claim. We do not currently log every read access to personal data; an append-only audit table exists in the schema but it is not yet written to on access, and saying otherwise would be a false security claim. And we do not claim an uptime figure, because the deployment has no redundancy that would justify one.",
+        "No system is perfectly secure. If we become aware of a breach affecting your personal data we will notify the relevant supervisory authority within 72 hours where Article 33 requires it, and tell you directly where Article 34 requires it."
+      ]
+    },
+    {
+      "id": "changes",
+      "heading": "Changes to this policy",
+      "paragraphs": [
+        "When the wording changes, the version date at the top changes with it, and consent given against an earlier version is not carried over — the stored consent record is tied to the version it was given against, so a rewritten policy asks again rather than assuming."
+      ]
+    },
+    {
+      "id": "contact",
+      "heading": "Contact",
+      "paragraphs": [
+        "Privacy questions and requests: use the request form, which records the statutory deadline automatically, or write to the controller at the address at the top of this policy."
+      ]
+    }
+  ]
+}

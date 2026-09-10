@@ -1,0 +1,99 @@
+{
+  "$comment": [
+    "Legal copy for the data subject request form. Single owner (global Rule 12) — no component",
+    "may restate any of this text.",
+    "",
+    "documentVersion is the date this wording was last changed. It is not decoration: a rights",
+    "notice is a statement made to a data subject at a moment in time, and a dispute about what",
+    "someone was told is a dispute about which version they saw."
+  ],
+  "documentVersion": "2026-09-10",
+
+  "form": {
+    "title": "Exercise your privacy rights",
+    "intro": "Use this form to ask what personal data we hold about you, to have it corrected or deleted, or to object to how it is used. You do not need an account, and you do not need to be a customer.",
+    "emailLabel": "The email address your data is held under",
+    "emailHelp": "We can only match a request to records held under the address you give us.",
+    "typeLabel": "What are you asking us to do?",
+    "regimeLabel": "Which law are you exercising this under?",
+    "regimeHelp": "If you are not sure, leave this as the EU/UK option — it carries the shorter deadline, so we will be held to it either way.",
+    "messageLabel": "Anything else we should know (optional)",
+    "messagePlaceholder": "For example, which records you mean, or a correction you want made.",
+    "submit": "Submit request",
+    "submitting": "Submitting…"
+  },
+
+  "requestTypes": [
+    {
+      "value": "access",
+      "label": "Give me a copy of my data",
+      "description": "GDPR Article 15 · US state right to know"
+    },
+    {
+      "value": "portability",
+      "label": "Send me my data in a portable format",
+      "description": "GDPR Article 20 — machine-readable, so you can take it elsewhere"
+    },
+    {
+      "value": "rectification",
+      "label": "Correct something that is wrong",
+      "description": "GDPR Article 16"
+    },
+    {
+      "value": "erasure",
+      "label": "Delete my data",
+      "description": "GDPR Article 17 · US state right to delete"
+    },
+    {
+      "value": "restriction",
+      "label": "Stop using my data while a dispute is resolved",
+      "description": "GDPR Article 18"
+    },
+    {
+      "value": "objection",
+      "label": "I object to how my data is being used",
+      "description": "GDPR Article 21"
+    },
+    {
+      "value": "opt_out_sale",
+      "label": "Do not sell or share my data",
+      "description": "US state opt-out. We do not sell or share personal data, and this request is recorded and honoured regardless."
+    }
+  ],
+
+  "regimes": [
+    {
+      "value": "gdpr",
+      "label": "EU / UK (GDPR)",
+      "deadline": "We must respond within one month of receiving your request."
+    },
+    {
+      "value": "us_state",
+      "label": "A US state privacy law",
+      "deadline": "We must respond within 45 days of receiving your request."
+    }
+  ],
+
+  "success": {
+    "title": "Your request has been recorded",
+    "body": "We have logged your request and the response deadline started when we received it. We will contact you at the address you gave us. Before we release or delete anything we have to be reasonably sure you are who you say you are, so our next message may ask you to confirm your identity — that step is required by law and protects you from someone else making a request in your name."
+  },
+
+  "erasureWarning": "Deleting your account data does not delete inspection records that we are legally required to keep. Fire safety inspection records are retained under NFPA 10 and OSHA 29 CFR 1910.157 for the periods those rules set, and the technician who signed a record is named on it because the rules require a named qualified person. Where we must keep a record, we will tell you which one and why.",
+
+  "notice": {
+    "identity": "We will not act on a request until we are reasonably satisfied of your identity (GDPR Article 12(6)). This is why the form does not delete anything by itself.",
+    "noFee": "There is no charge for making a request.",
+    "complaint": "If you are unhappy with our response you can complain to your data protection authority. In the EU that is the supervisory authority in your country of residence; in the UK it is the Information Commissioner's Office."
+  },
+
+  "admin": {
+    "title": "Privacy requests",
+    "empty": "No open requests.",
+    "emptyHint": "Requests filed through the public form appear here with their statutory deadline.",
+    "overdueLabel": "Overdue",
+    "dueTodayLabel": "Due today",
+    "verifyPrompt": "Record how you confirmed this person's identity before completing the request.",
+    "refusalPrompt": "A refusal must be reasoned and communicated to the requester (GDPR Article 12(4))."
+  }
+}
