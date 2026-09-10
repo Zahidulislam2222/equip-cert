@@ -30,6 +30,8 @@ import { useEffect, useState } from 'react';
 const MIN_MS = 1100;
 /** The ceiling. Whatever is still loading, the page is handed over at this point. */
 const MAX_MS = 3200;
+import { isGranted } from '@/lib/compliance/consent';
+
 const SESSION_KEY = 'ec:intro-played';
 
 export function Preloader() {
@@ -67,7 +69,12 @@ export function Preloader() {
       const finish = () => {
         if (cancelled) return;
         try {
-          sessionStorage.setItem(SESSION_KEY, '1');
+          // Optional storage: remembering the intro was played is a preference, not a
+          // necessity. Without consent the intro simply plays again — a mild annoyance is
+          // the correct cost of not having been given permission to remember.
+          if (isGranted('preferences')) {
+            sessionStorage.setItem(SESSION_KEY, '1');
+          }
         } catch {
           /* not important enough to fail over */
         }

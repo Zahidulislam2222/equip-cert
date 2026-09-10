@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isGranted } from '@/lib/compliance/consent';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -24,7 +25,13 @@ export function ThemeToggle() {
       localStorage.removeItem('theme');
     } else {
       root.classList.toggle('dark', theme === 'dark');
-      localStorage.setItem('theme', theme);
+      // The theme applies either way — the visual choice is honoured for this page view.
+      // Only PERSISTING it is optional storage, and that needs consent. Applying without
+      // storing is the honest reading of "reject optional": the feature still works, it
+      // simply does not follow you to the next visit.
+      if (isGranted('preferences')) {
+        localStorage.setItem('theme', theme);
+      }
     }
   }, [theme]);
 

@@ -1,0 +1,44 @@
+{
+  "documentVersion": "2026-09-10",
+  "banner": {
+    "heading": "Your privacy choices",
+    "body": "We use a small amount of browser storage to keep you signed in and to hold inspections you complete while offline. That storage is required for the app to work. One optional item remembers your theme.",
+    "noTracking": "No analytics. No advertising. No third-party trackers. We do not sell or share your personal information.",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject optional",
+    "manage": "Choose individually",
+    "save": "Save choices",
+    "policyLink": "Privacy Policy"
+  },
+  "gpc": {
+    "heading": "Opt-Out Preference Signal Honored",
+    "body": "Your browser sent a Global Privacy Control signal. We have recorded an opt-out for you and stored nothing optional. You do not need to do anything else.",
+    "learnMore": "About Global Privacy Control"
+  },
+  "settings": {
+    "heading": "Privacy choices",
+    "body": "Change what this browser stores. Withdrawing is as easy as granting, and takes effect immediately.",
+    "currentGranted": "Optional storage is on for this browser.",
+    "currentDenied": "Optional storage is off for this browser.",
+    "never": "You have not made a choice on this browser yet.",
+    "withdraw": "Withdraw optional consent",
+    "grant": "Allow optional storage",
+    "recordedAt": "Last changed"
+  },
+  "categories": [
+    {
+      "id": "essential",
+      "name": "Strictly necessary",
+      "required": true,
+      "description": "Keeps you signed in, and stores inspections you complete without a connection until they can be uploaded. The app cannot function without these.",
+      "items": "Supabase authentication session, offline inspection queue (IndexedDB), your saved privacy choice"
+    },
+    {
+      "id": "preferences",
+      "name": "Preferences",
+      "required": false,
+      "description": "Remembers your light or dark theme choice and whether you have already seen the intro animation. Turning this off does not limit any feature.",
+      "items": "theme, intro-seen flag"
+    }
+  ]
+}

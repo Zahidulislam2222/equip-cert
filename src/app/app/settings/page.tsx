@@ -3,6 +3,7 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { config } from '@/lib/config';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { ConsentControls } from '@/components/shared/ConsentControls';
 import { MotionPage } from '@/components/motion/MotionPage';
 import { StaggerContainer, StaggerItem } from '@/components/motion/StaggerGrid';
 
@@ -36,6 +37,11 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        </StaggerItem>
+
+        {/* Privacy choices — the control the banner promises exists (DEF-029). */}
+        <StaggerItem>
+          <ConsentControls />
         </StaggerItem>
 
         {/* Organization Card */}
