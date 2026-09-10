@@ -35,6 +35,7 @@
 // Copy comes from src/content/consent.json via the consent module.
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { ShieldCheck, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { config } from '@/lib/config';
@@ -59,7 +60,28 @@ const DOCK = 'fixed bottom-4 left-4 right-4 z-50 sm:bottom-40 sm:left-6 sm:right
 /** All three decision buttons. Identical by construction — one class string, one place. */
 const DECISION_BUTTON = 'h-8 w-full rounded-md px-2 text-[11px]';
 
+// Routes that store nothing optional, so there is nothing on them to consent to.
+//
+// This is not a cosmetic exemption and it is not a route whitelist that can quietly grow.
+// Consent is required BEFORE optional storage, and the marketing landing page performs none:
+// ThemeToggle is not mounted there, and the Preloader's intro-seen flag is already gated on
+// `isGranted('preferences')`, which is false until a decision exists. So the page writes
+// strictly necessary storage only — lawful under ePrivacy Art. 5(3) and GDPR Art. 6(1)(f)
+// without consent.
+//
+// Interrupting a first-time visitor to ask permission for storage you are not performing is
+// not extra caution. It trains people to dismiss the notice unread, and it is what put a card
+// on top of the hero (DEF-041). The notice appears the moment the visitor reaches a route
+// where optional storage is actually reachable — every /auth and /app route, where the theme
+// control lives — which is still before anything optional is written.
+//
+// THE INVARIANT, for whoever edits this next: a route may only appear here while it stores
+// nothing optional. Mount ThemeToggle on the landing page, or add any optional write to it,
+// and this entry must come out in the same commit.
+const NO_OPTIONAL_STORAGE_ROUTES = new Set(['/']);
+
 export function CookieConsent() {
+  const pathname = usePathname();
   const { profile, organization } = useAuth();
   const [show, setShow] = useState(false);
   const [showGpcNotice, setShowGpcNotice] = useState(false);
@@ -107,6 +129,12 @@ export function CookieConsent() {
     persist(categories, false);
     setShow(false);
   };
+
+  // Suppress the NOTICE, never the machinery. The effect above still runs on these routes: a
+  // GPC signal is still recorded and any optional storage a previous session left behind is
+  // still purged. Only the card waits for a route where the question is real — so nothing that
+  // protects the visitor is skipped, just the interruption that protects nothing.
+  if (NO_OPTIONAL_STORAGE_ROUTES.has(pathname)) return null;
 
   if (showGpcNotice) {
     return (
