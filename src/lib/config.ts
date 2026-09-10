@@ -91,7 +91,12 @@ export const serverConfig = {
   },
   // Operational limits for the /api/analyze endpoint
   analyze: {
+    // Per authenticated user, per window. This is the budget that meters real usage.
     rateLimit: intEnv(process.env.ANALYZE_RATE_LIMIT, 20),
+    // The pre-authentication guard is this multiple of the per-user limit, because one office
+    // address legitimately carries many technicians. It exists to keep an unauthenticated
+    // flood off the token-verification path, not to meter anything.
+    ipBurstFactor: intEnv(process.env.ANALYZE_IP_BURST_FACTOR, 10),
     rateWindowMs: intEnv(process.env.ANALYZE_RATE_WINDOW_MS, 60 * 60 * 1000),
     maxImageBytes: intEnv(process.env.ANALYZE_MAX_IMAGE_BYTES, 10 * 1024 * 1024),
   },

@@ -2,22 +2,21 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { createAIProvider } from '../src/lib/ai/provider';
 import { config, serverConfig } from '../src/lib/config';
+import { RateLimiter } from '../src/lib/rate-limit';
 import { z } from 'zod';
 
-// Simple in-memory rate limiter (resets per cold start — good enough for serverless).
-// Limits come from serverConfig.analyze — never redeclare them here.
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + serverConfig.analyze.rateWindowMs });
-    return false;
-  }
-  entry.count++;
-  return entry.count > serverConfig.analyze.rateLimit;
-}
+/**
+ * One limiter, two populations.
+ *
+ * `ip:` buckets are checked BEFORE authentication, where the address is the only identifier
+ * that exists, and exist only to keep an unauthenticated flood off the token-verification
+ * round trip. `user:` buckets are the real meter and are checked after the token is verified,
+ * because the account is what actually spends the AI budget — see src/lib/rate-limit.ts for
+ * why keying on the address alone throttled the customer and not the attacker.
+ *
+ * Limits come from serverConfig.analyze — never redeclare them here.
+ */
+const limiter = new RateLimiter({ windowMs: serverConfig.analyze.rateWindowMs });
 
 // Input validation schema
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -36,9 +35,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // Rate limiting
+  // Pre-auth flood guard. Only the address exists at this point, so it is the only thing we
+  // can key on. Deliberately looser than the per-user limit below: its job is to keep an
+  // unauthenticated flood away from the token-verification round trip, not to meter usage.
   const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || 'unknown';
-  if (isRateLimited(clientIp)) {
+  const ipBudget = serverConfig.analyze.rateLimit * serverConfig.analyze.ipBurstFactor;
+  if (limiter.hit(`ip:${clientIp}`, ipBudget).limited) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
@@ -48,13 +50,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // FAIL CLOSED. The previous version wrapped this whole block in
+  // `if (supabaseUrl && supabaseAnonKey)`, so a project deployed with either variable missing
+  // skipped verification entirely and served a third-party AI provider to anyone who sent the
+  // word "Bearer". A misconfiguration must never silently become an authorization bypass —
+  // that is OWASP API2 with the configuration boundary as the trigger.
   const { url: supabaseUrl, anonKey: supabaseAnonKey } = config.supabase;
-  if (supabaseUrl && supabaseAnonKey) {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { error: authError } = await supabase.auth.getUser(authHeader.slice(7));
-    if (authError) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Auth not configured: NEXT_PUBLIC_SUPABASE_URL / ANON_KEY missing.');
+    return res.status(503).json({ error: 'Service unavailable' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  const { data: authData, error: authError } = await supabase.auth.getUser(authHeader.slice(7));
+  if (authError || !authData?.user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  // The real meter: the account spending the AI budget, not the gateway it happens to sit
+  // behind. An office of ten technicians on one NAT gets ten budgets, and an attacker who
+  // rotates addresses still gets one.
+  if (limiter.hit(`user:${authData.user.id}`, serverConfig.analyze.rateLimit).limited) {
+    return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
   // Input validation

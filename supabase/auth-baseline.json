@@ -1,0 +1,105 @@
+{
+  "$comment": [
+    "Desired security posture of Supabase Auth for this project. This file is the SINGLE OWNER",
+    "of these values (global Rule 12) — nothing else in the repository may restate them.",
+    "",
+    "Why a file and not a dashboard click: auth configuration is security-relevant state that",
+    "lives outside Git by default. DEF-027 was this same failure shape one layer down — the",
+    "repository described a database that did not exist. A setting nobody can diff is a setting",
+    "that silently drifts, and every gate stays green while it does.",
+    "",
+    "  npm run test:auth-config              assert the live project matches (read-only gate)",
+    "  node scripts/auth-config.mjs --apply  write this baseline to the live project",
+    "",
+    "'reason' is required on every entry. A security setting without a recorded reason cannot be",
+    "reviewed, only obeyed."
+  ],
+  "settings": {
+    "uri_allow_list": {
+      "value": "https://equipcert.zahidul-islam.com/**,http://localhost:3000/**",
+      "reason": "Two defects in one value. (1) The production redirect was NOT allowed: the app requests window.location.origin + '/app/dashboard', and the allow list held only localhost, so every magic link on production silently landed on the site root instead of the dashboard. (2) 'http://localhost:4321' was template cruft for a port this project has never used, and a localhost entry in a production allow list is a documented Supabase hardening finding — it lets a crafted link deliver an auth token to a local listener. Scoped globs replace bare origins."
+    },
+    "mailer_otp_exp": {
+      "value": 900,
+      "reason": "Magic-link and recovery tokens were valid for a full hour. That is an hour in which a token sitting in a mailbox, a mail-scanner log, or a forwarded thread is a working credential. Fifteen minutes is long enough for mail delivery and short enough that a leaked link is usually already dead."
+    },
+    "mailer_notifications_password_changed_enabled": {
+      "value": true,
+      "reason": "A silent password change is how account takeover stays undetected. The template already exists in the project; it was simply never switched on."
+    },
+    "mailer_notifications_email_changed_enabled": {
+      "value": true,
+      "reason": "Changing the account email is a takeover step, not a preference change. The old address has to be told."
+    },
+    "mailer_notifications_mfa_factor_enrolled_enabled": {
+      "value": true,
+      "reason": "An attacker enrolling their own TOTP factor makes the takeover survive a password reset. This is the notification that catches it."
+    },
+    "mailer_notifications_mfa_factor_unenrolled_enabled": {
+      "value": true,
+      "reason": "Removing the victim's factor is the same attack from the other direction."
+    },
+    "mailer_notifications_identity_linked_enabled": {
+      "value": true,
+      "reason": "Linking an attacker-controlled OAuth identity is a password-less back door into the account."
+    },
+    "mailer_notifications_identity_unlinked_enabled": {
+      "value": true,
+      "reason": "Unlinking the legitimate identity locks the owner out of their own account."
+    },
+    "security_update_password_require_current_password": {
+      "value": true,
+      "reason": "Without it, anyone holding a stolen access token can set a new password and convert temporary session theft into permanent account ownership. The app has no password-change screen today, so this costs nothing now and closes the hole before one is written."
+    },
+    "rate_limit_verify": {
+      "value": 15,
+      "reason": "The sign-in and sign-up bucket: 30 requests per 5 minutes per IP by default, halved to 15. It is not a strong control on its own — a credential-stuffing run rotates IPs — but halving it costs a real technician nothing. See the CAPTCHA entry under known_gaps for the control that actually matters."
+    }
+  },
+  "assert_only": {
+    "$comment": "Checked, never written. These are already correct; the gate exists to notice if that changes.",
+    "external_anonymous_users_enabled": {
+      "value": false,
+      "reason": "Anonymous sign-in hands an unauthenticated caller a real JWT, and every RLS policy in this schema is written against an authenticated tenant member."
+    },
+    "mailer_autoconfirm": {
+      "value": false,
+      "reason": "Auto-confirm accepts an email address nobody proved they control."
+    },
+    "mailer_allow_unverified_email_sign_ins": {
+      "value": false,
+      "reason": "The same hole from the sign-in side."
+    },
+    "refresh_token_rotation_enabled": {
+      "value": true,
+      "reason": "A refresh token reused after rotation is evidence of theft; without rotation there is nothing to detect."
+    },
+    "mailer_secure_email_change_enabled": {
+      "value": true,
+      "reason": "Requires confirmation at BOTH the old and the new address, so an attacker with a live session cannot quietly move the account to their own inbox."
+    },
+    "security_manual_linking_enabled": {
+      "value": false,
+      "reason": "Manual identity linking lets a caller attach an identity to an account from the client. Off until a product need appears."
+    },
+    "disable_signup": {
+      "value": false,
+      "reason": "Open sign-up is deliberate for a demo product. Recorded so it reads as a decision rather than an oversight."
+    },
+    "password_min_length": {
+      "value": 12,
+      "reason": "NIST SP 800-63B sets the floor at 8 and puts the weight on length rather than composition."
+    },
+    "password_required_characters": {
+      "value": "",
+      "reason": "DELIBERATELY EMPTY. NIST SP 800-63B advises AGAINST composition rules — they push users toward predictable substitutions and are a documented net loss. Length plus a breached-password check is the guidance. This blank is a decision, and the gate asserts it so that a later well-meaning hardening pass does not undo it."
+    }
+  },
+  "known_gaps": {
+    "$comment": "Recorded, not hidden. An incomplete security record is worse than an honest one.",
+    "password_hibp_enabled": "Breached-password checking (HaveIBeenPwned) is a Supabase Pro feature. The free-tier substitute in this codebase checks the same corpus client-side through the k-anonymity range API, which never transmits the password or its full hash. It is genuinely weaker: it runs where the user is, so it advises rather than enforces.",
+    "security_captcha_enabled": "CAPTCHA is the control that actually stops credential stuffing, and it IS available on the free plan. It is off because it needs a Cloudflare Turnstile or hCaptcha site key that only the project owner can create, and it adds a third-party script that must be reflected in the CSP and in the cookie policy. Owner action, tracked — not a limitation of the plan.",
+    "sessions_timebox": "Absolute session lifetime, and 'sessions_inactivity_timeout' beside it, are Pro-plan features. On the free plan a refresh token does not expire on its own, so a stolen one stays valid until it is used out of order (rotation catches that) or the user signs out. This is the most material free-tier auth weakness in the project.",
+    "smtp_host": "Auth email uses Supabase's shared sender, which is explicitly not for production and is capped at 2 messages per hour for the entire project. Every notification enabled above draws on that budget. Custom SMTP is free to configure and needs an owner-held provider credential."
+  }
+}
