@@ -201,3 +201,193 @@ jobs:
             echo "::error title=Performance advisor::A performance finding at ERROR level appeared."
             exit 1
           fi
+
+  # ---------------------------------------------------------------------------
+  # The Flutter client — Android.
+  #
+  # Deliberately NOT path-filtered to `mobile/**`. `mobile/test/schema_contract_test.dart`
+  # reads `supabase/migrations/`, and `capture_downscale_test.dart` reads `.env.example`;
+  # both are contract tests against files OUTSIDE mobile/. A path filter would skip exactly
+  # the run that a migration change most needs.
+  #
+  # Needs no secrets, so it runs on fork pull requests too. `mobile/lib/src/config/
+  # app_config.dart` supplies compile-time defaults for every --dart-define, and the app fails
+  # closed at runtime when the Supabase values are blank — so an unconfigured build still
+  # proves that it compiles, which is all this job claims.
+  # ---------------------------------------------------------------------------
+  mobile-android:
+    name: Flutter (Android)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to the version this was developed and verified against. A floating `channel:
+      # stable` would silently move the toolchain under a client whose whole test suite
+      # asserts library behaviour — DEF-049 and DEF-050 were both found by tests that pin
+      # what a dependency actually does, and those tests are only meaningful against a known
+      # SDK.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.3
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      # Formatting runs BEFORE analyze, and that order is deliberate. `dart format` splits a
+      # long single-line `if (x) return;` across two lines, and only THEN does
+      # `curly_braces_in_flow_control_structures` fire on it. So analyze on an unformatted tree
+      # answers a different question from analyze on a formatted one: the local tree reported
+      # "No issues found!" while seven of these were latent, and they appeared the moment the
+      # formatter ran. Checking format first means analyze always sees the canonical text.
+      #
+      # This step did not exist when Stage 5 was first called done, which is why E2 was never
+      # run and 41 files were unformatted. DEF-052.
+      - name: Formatting is canonical (E2)
+        working-directory: mobile
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      # `--fatal-infos` because the project gate is "No issues found!", not "no errors".
+      # Without it, `flutter analyze` exits 0 on infos — and an info is what surfaced DEF-048,
+      # a security check that had been written and never wired to anything.
+      - name: Analyze (zero issues, infos included)
+        working-directory: mobile
+        run: flutter analyze --fatal-infos
+
+      - name: Unit tests
+        working-directory: mobile
+        run: flutter test
+
+      # No key.properties exists on a runner and none should. What this proves is that the
+      # release build COMPILES; the assertion below proves it did not quietly sign itself with
+      # the public debug key, which is what the Flutter scaffold did.
+      - name: Build release APK
+        working-directory: mobile
+        run: flutter build apk --release
+
+      # Asserts the SIGNATURE, not the filename. Verified locally on 2026-09-11: with
+      # key.properties removed, Flutter still names the output `app-release.apk` — it just has
+      # no signature block at all (`apksigner verify` reports "Missing META-INF/MANIFEST.MF").
+      # Checking for an `app-release-unsigned.apk` filename would therefore have passed on a
+      # debug-signed APK, which is the exact failure this step exists to catch.
+      - name: The unsigned-when-unconfigured guarantee holds
+        working-directory: mobile
+        run: |
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          ls -l build/app/outputs/flutter-apk/
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort | tail -1)
+          if [ -z "$apksigner" ]; then
+            echo "::error title=apksigner not found::Cannot verify the release signature."
+            exit 1
+          fi
+
+          if "$apksigner" verify --print-certs "$apk"; then
+            echo "::error title=Release signing fell back::The release APK IS signed, on a"
+            echo "runner that holds no keystore. That means the build found a signing config"
+            echo "it should not have — the SDK's debug key is public, and an APK signed with"
+            echo "it is installable, distributable and updatable by anyone."
+            exit 1
+          fi
+          echo "Release APK carries no signature, as intended without key.properties."
+
+      # Acceptance criterion C4 is specified as "manifest inspection of the BUILT release
+      # manifest", not the source one. The distinction is the point: a merged library manifest
+      # can reintroduce cleartext traffic or a debuggable flag that the source file never had.
+      - name: Built release manifest is hardened (C4)
+        working-directory: mobile
+        run: |
+          # `packaged_manifests`, specifically: that is the one AGP puts INTO the APK. The
+          # other release manifests under intermediates/ (merged_manifest/…AppLinkSettings,
+          # processReleaseMainManifest) are earlier stages, and asserting against one of those
+          # would be checking a file that never ships.
+          manifest=build/app/intermediates/packaged_manifests/release/processReleaseManifestForPackage/AndroidManifest.xml
+          if [ ! -f "$manifest" ]; then
+            # AGP has moved this path before. Fall back to a search rather than fail on a
+            # path change, but never silently accept "no manifest found".
+            manifest=$(find build/app/intermediates -path '*packaged_manifests*release*' -name AndroidManifest.xml | head -1)
+          fi
+          if [ -z "$manifest" ]; then
+            echo "::error title=No merged manifest::Could not locate the built release manifest."
+            find build/app/intermediates -name AndroidManifest.xml | head -20
+            exit 1
+          fi
+          echo "Inspecting $manifest"
+          cat "$manifest"
+
+          if grep -q 'android:debuggable="true"' "$manifest"; then
+            echo "::error title=Debuggable release::android:debuggable=true survived into the release manifest."
+            exit 1
+          fi
+          if grep -q 'usesCleartextTraffic="true"' "$manifest"; then
+            echo "::error title=Cleartext permitted::A merged manifest re-enabled cleartext traffic."
+            exit 1
+          fi
+          if ! grep -q 'networkSecurityConfig' "$manifest"; then
+            echo "::error title=No network security config::The release manifest does not reference one."
+            exit 1
+          fi
+          echo "Release manifest: not debuggable, no cleartext, network security config present."
+
+  # ---------------------------------------------------------------------------
+  # The Flutter client — iOS.
+  #
+  # A SEPARATE RUNNER because iOS cannot be built anywhere else. Xcode is macOS-only, so the
+  # Windows machine this project is developed on can typecheck and test the Dart but has no
+  # way to discover that a CocoaPods dependency does not resolve, that the Xcode project
+  # references a missing file, or that a plugin has no iOS implementation. Without this job
+  # the iOS half of "Android + iOS client" is an untested claim.
+  #
+  # `--no-codesign` because signing needs the Apple Developer Program: $99/year, recurring,
+  # NOT authorised. This produces a compiled .app that cannot be installed on a device, and no
+  # claim beyond "it builds" should be made from it. macOS runner minutes are free on this
+  # repository because it is public.
+  # ---------------------------------------------------------------------------
+  mobile-ios:
+    name: Flutter (iOS, unsigned)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.3
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build iOS (unsigned)
+        working-directory: mobile
+        run: flutter build ios --release --no-codesign
+
+      # C5. Checked against the built app bundle rather than the source plist, for the same
+      # reason as C4: this is the file that actually ships. `plutil -extract` fails when the
+      # key is absent, so a plist that dropped the ATS dictionary entirely fails here too
+      # instead of passing on a missing grep match.
+      - name: Built Info.plist forbids arbitrary loads (C5)
+        working-directory: mobile
+        run: |
+          plist=build/ios/iphoneos/Runner.app/Info.plist
+          ls -l "$plist"
+
+          allows=$(plutil -extract NSAppTransportSecurity.NSAllowsArbitraryLoads raw -o - "$plist")
+          echo "NSAllowsArbitraryLoads=$allows"
+          if [ "$allows" != "false" ]; then
+            echo "::error title=ATS disabled::NSAllowsArbitraryLoads is not false in the built app."
+            exit 1
+          fi
+
+          # C6: every permission the app can trigger must carry a purpose string, or iOS kills
+          # the app the moment the prompt would appear.
+          for key in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSLocationWhenInUseUsageDescription; do
+            value=$(plutil -extract "$key" raw -o - "$plist")
+            if [ -z "$value" ]; then
+              echo "::error title=Missing purpose string::$key is absent from the built Info.plist."
+              exit 1
+            fi
+            echo "$key: $value"
+          done

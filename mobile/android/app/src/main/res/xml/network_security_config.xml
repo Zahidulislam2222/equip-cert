@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Acceptance criterion C4.
+
+  `android:usesCleartextTraffic="false"` on <application> is the coarse switch; this file is the
+  one that survives a manifest merge, because a library that declares its own
+  networkSecurityConfig loses to the application's. Both are set for that reason.
+
+  WHY cleartext matters more here than on a typical app: the traffic is a Supabase session
+  token, evidence photographs, and a signed compliance record. The network is a contractor's
+  phone on whatever Wi-Fi the site offers, which on a construction or industrial site is
+  routinely an open guest SSID. Cleartext there is not theoretical.
+
+  cleartextTrafficPermitted="false" with NO per-domain exception. There is no debug-only
+  localhost exception either: a `debug-overrides` block applies to any build the tooling marks
+  debuggable, and the temptation to point the app at a plain-HTTP dev server is exactly how an
+  exception outlives the afternoon it was added. `flutter run` talks to the app over adb, not
+  over HTTP, so nothing in development needs one.
+
+  System CA store only. No user-installed certificates are trusted, so an interception proxy
+  whose root has been added on the device cannot read the session token — this is the default
+  from API 24 onward and is stated explicitly so it cannot be silently widened.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

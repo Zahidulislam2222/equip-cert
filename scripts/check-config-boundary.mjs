@@ -9,41 +9,80 @@
  *   node scripts/check-config-boundary.mjs
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix, sep } from 'node:path';
 
-const SCAN_ROOTS = ['src', 'api', 'deploy'];
-const SCAN_EXTENSIONS = ['.ts', '.tsx'];
-const SKIP_DIRS = new Set(['node_modules', '.next', 'out', 'android', 'dist', 'build']);
+const SCAN_ROOTS = ['src', 'api', 'deploy', 'mobile/lib', 'mobile/test'];
+const SCAN_EXTENSIONS = ['.ts', '.tsx', '.dart'];
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.next',
+  'out',
+  'android',
+  'ios',
+  'dist',
+  'build',
+  '.dart_tool',
+]);
 
 /** The single files permitted to own each class of value. */
 const CONFIG_MODULE = 'src/lib/config.ts';
 const PLANS_MODULE = 'src/lib/plans.ts';
+
+/**
+ * The Flutter client is a second runtime with the same rule and its own owner file.
+ *
+ * Dart has no `process.env` at runtime on a mobile device — a release build has no shell to
+ * inherit one from. Its equivalent is `String.fromEnvironment`, resolved at COMPILE time from
+ * `--dart-define`, which makes it exactly as baked-in as `NEXT_PUBLIC_*` and exactly as much
+ * of a boundary. `dart_define.example.json` is the Dart `.env.example`: names and safe
+ * placeholders only, never a real value.
+ */
+const DART_CONFIG_MODULE = 'mobile/lib/src/config/app_config.dart';
+const DART_DEFINE_EXAMPLE = 'mobile/dart_define.example.json';
+
+const TS = ['.ts', '.tsx'];
+const DART = ['.dart'];
 
 const RULES = [
   {
     id: 'env-access-outside-config',
     description: `process.env may only be read in ${CONFIG_MODULE}`,
     pattern: /process\.env\./,
+    appliesTo: TS,
     allow: [CONFIG_MODULE],
+  },
+  {
+    id: 'dart-env-access-outside-config',
+    description: `compile-time environment values may only be read in ${DART_CONFIG_MODULE}`,
+    // `Platform.environment` is included even though it is empty on a released mobile app:
+    // reading it is a sign someone is reaching for configuration in the wrong place, and it
+    // is NOT empty on the desktop and test targets where it would then silently disagree.
+    pattern: /(?:String|int|bool|double)\.fromEnvironment|Platform\.environment/,
+    appliesTo: DART,
+    allow: [DART_CONFIG_MODULE],
   },
   {
     id: 'hardcoded-model-id',
-    description: `model IDs must come from ${CONFIG_MODULE}`,
+    description: `model IDs must come from ${CONFIG_MODULE} / ${DART_CONFIG_MODULE}`,
     pattern: /['"`](?:gemini-[\w.-]+|gpt-[\w.-]+|claude-[a-z]+-[\w.-]+|o[13]-[\w.-]+)['"`]/,
-    allow: [CONFIG_MODULE],
+    allow: [CONFIG_MODULE, DART_CONFIG_MODULE],
   },
   {
     id: 'hardcoded-provider-endpoint',
-    description: `provider/API base URLs must come from ${CONFIG_MODULE}`,
+    description: `provider/API base URLs must come from ${CONFIG_MODULE} / ${DART_CONFIG_MODULE}`,
+    // `api.pwnedpasswords.com` is in this list because the Flutter client performs the same
+    // k-anonymity breach lookup as src/lib/password-safety.ts. Two runtimes hardcoding the
+    // same third-party endpoint is precisely the drift this rule exists to prevent.
     pattern:
-      /['"`]https:\/\/(?:api\.anthropic\.com|api\.openai\.com|generativelanguage\.googleapis\.com|nominatim\.openstreetmap\.org|[a-z0-9-]+\.supabase\.co)/,
-    allow: [CONFIG_MODULE],
+      /['"`]https:\/\/(?:api\.anthropic\.com|api\.openai\.com|generativelanguage\.googleapis\.com|nominatim\.openstreetmap\.org|api\.pwnedpasswords\.com|[a-z0-9-]+\.supabase\.co)/,
+    allow: [CONFIG_MODULE, DART_CONFIG_MODULE],
   },
   {
     id: 'hardcoded-api-version',
     description: `provider API version headers must come from ${CONFIG_MODULE}`,
     pattern: /['"`]anthropic-version['"`]\s*:\s*['"`][\d-]+['"`]/,
+    appliesTo: TS,
     allow: [CONFIG_MODULE],
   },
   {
@@ -51,6 +90,18 @@ const RULES = [
     description: `plan prices belong only in ${PLANS_MODULE}`,
     pattern: /(?:price\s*:\s*\d|['"`]\$\d+['"`])/,
     allow: [PLANS_MODULE],
+  },
+  {
+    id: 'dart-supabase-bucket-name',
+    description:
+      'the evidence bucket name is a contract with the storage migration — it belongs in ' +
+      `${DART_CONFIG_MODULE}, not next to an upload call`,
+    // DEF-017 was made permanent by the bucket and path shape being restated at each call
+    // site. The Dart client stores evidence under the same contract; this keeps the string in
+    // one place so a rename cannot half-land.
+    pattern: /\.from\(\s*['"]evidence['"]\s*\)/,
+    appliesTo: DART,
+    allow: [DART_CONFIG_MODULE, 'mobile/lib/src/data/evidence_repository.dart'],
   },
   {
     id: 'secret-shaped-literal',
@@ -93,9 +144,15 @@ const violations = [];
 
 for (const file of files) {
   const relative = file.split(sep).join(posix.sep);
+  const extension = relative.slice(relative.lastIndexOf('.'));
   const lines = readFileSync(file, 'utf8').split(/\r?\n/);
 
   for (const rule of RULES) {
+    // A rule with no `appliesTo` is language-agnostic and runs everywhere. One that names
+    // extensions runs only there — `process.env` is meaningless in Dart and
+    // `String.fromEnvironment` is meaningless in TypeScript, and a rule that fires on the
+    // wrong language teaches people to ignore the gate.
+    if (rule.appliesTo && !rule.appliesTo.includes(extension)) continue;
     if (rule.allow.includes(relative)) continue;
 
     lines.forEach((raw, index) => {
@@ -111,6 +168,74 @@ for (const file of files) {
         });
       }
     });
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// Every compile-time Dart define must be documented.
+//
+// A `--dart-define` that nobody wrote down is invisible: it has a silent default baked into
+// the binary, it is absent from every build command, and the first symptom is an app in the
+// field talking to the wrong backend. `.env.example` plays this role for the web target;
+// `dart_define.example.json` plays it here, and this check is what keeps it honest — names
+// and safe placeholders only, never a real value (Rule 12).
+// ---------------------------------------------------------------------------------------
+if (existsSync(DART_CONFIG_MODULE)) {
+  const source = readFileSync(DART_CONFIG_MODULE, 'utf8');
+  const declared = new Set(
+    [...source.matchAll(/\.fromEnvironment\(\s*'([A-Z0-9_]+)'/g)].map((m) => m[1])
+  );
+
+  let documented = new Set();
+  if (existsSync(DART_DEFINE_EXAMPLE)) {
+    try {
+      documented = new Set(Object.keys(JSON.parse(readFileSync(DART_DEFINE_EXAMPLE, 'utf8'))));
+    } catch (error) {
+      violations.push({
+        file: DART_DEFINE_EXAMPLE,
+        line: 1,
+        rule: 'dart-define-example-unparseable',
+        description: `not valid JSON, so --dart-define-from-file would fail: ${error.message}`,
+        excerpt: '',
+      });
+    }
+  } else {
+    violations.push({
+      file: DART_DEFINE_EXAMPLE,
+      line: 1,
+      rule: 'dart-define-example-missing',
+      description: 'the Dart client has compile-time configuration but no documented example',
+      excerpt: '',
+    });
+  }
+
+  for (const key of declared) {
+    if (!documented.has(key)) {
+      violations.push({
+        file: DART_DEFINE_EXAMPLE,
+        line: 1,
+        rule: 'dart-define-undocumented',
+        description: `${key} is read by the app but is not in the example file`,
+        excerpt: '',
+      });
+    }
+  }
+
+  for (const key of documented) {
+    // JSON has no comments, and a file of two dozen opaque keys with no way to say what they
+    // are or which ones must never appear is a file nobody can use safely. Keys prefixed with
+    // `_` are notes, not defines. They are ignored here (and passing one to
+    // `--dart-define-from-file` merely defines a constant nothing reads).
+    if (key.startsWith('_')) continue;
+    if (!declared.has(key)) {
+      violations.push({
+        file: DART_DEFINE_EXAMPLE,
+        line: 1,
+        rule: 'dart-define-unused',
+        description: `${key} is documented but nothing reads it — a define nobody consumes is a lie`,
+        excerpt: '',
+      });
+    }
   }
 }
 

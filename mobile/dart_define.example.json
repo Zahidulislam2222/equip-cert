@@ -1,0 +1,35 @@
+{
+  "_README": "Copy to dart_define.json (gitignored), fill in the real values, then build with: flutter build apk --release --dart-define-from-file=dart_define.json. Names and placeholders only in THIS file. Real values live in the gitignored CREDENTIALS.md (Rule 8) and in dart_define.json. Every key here must exist in lib/src/config/app_config.dart and vice versa - `npm run test:config` fails the build both ways.",
+  "_NEVER_PUT_HERE": "SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, GEMINI_API_KEY, or any other server-side secret. A --dart-define is compiled into the APK and an APK is a zip anyone can unpack. Server secrets belong to the /api handlers only.",
+
+  "APP_NAME": "EquipCert AI",
+  "APP_URL": "https://equipcert.example.com",
+
+  "SUPABASE_URL": "https://your-project-ref.supabase.co",
+  "SUPABASE_ANON_KEY": "replace-with-the-project-anon-key",
+
+  "EVIDENCE_URL_TTL_SECONDS": "600",
+
+  "CAPTURE_MAX_EDGE_PX": "1600",
+  "CAPTURE_JPEG_QUALITY": "85",
+
+  "PWNED_RANGE_URL": "https://api.pwnedpasswords.com/range",
+  "PASSWORD_MIN_LENGTH": "12",
+  "PWNED_TIMEOUT_MS": "4000",
+
+  "CONTENTFUL_BASE_URL": "https://cdn.contentful.com",
+  "CONTENTFUL_SPACE_ID": "replace-with-the-contentful-space-id",
+  "CONTENTFUL_ACCESS_TOKEN": "replace-with-the-contentful-delivery-token",
+  "CONTENTFUL_ENVIRONMENT": "master",
+  "CONTENTFUL_CHECKLIST_TYPE": "checklist",
+  "CONTENTFUL_TIMEOUT_MS": "8000",
+
+  "REVERSE_GEOCODE_URL": "https://nominatim.openstreetmap.org/reverse",
+  "REVERSE_GEOCODE_USER_AGENT": "EquipCertMobile/1.0 (+https://equipcert.example.com)",
+  "GPS_TIMEOUT_MS": "10000",
+
+  "OFFLINE_SYNC_BATCH": "10",
+  "OFFLINE_MAX_ATTEMPTS": "5",
+
+  "ANALYZE_TIMEOUT_MS": "45000"
+}

@@ -94,3 +94,27 @@ supabase/.temp/
 
 # Exported data from the retired Singapore project — contains personal data (Rule 8/11)
 _archive-*/
+
+# ---------------------------------------------------------------------------
+# Flutter client (mobile/)
+# ---------------------------------------------------------------------------
+# Real --dart-define values. The committed sibling is dart_define.example.json,
+# which holds names and placeholders only (Rule 12).
+mobile/dart_define.json
+# Android release signing. key.properties holds the keystore password; the .jks
+# holds the private key that IS the app's identity on Play. Losing it means no
+# further update to an installed app can ever be signed (Rule 8: values go to
+# CREDENTIALS.md, key file stays local).
+mobile/android/key.properties
+*.jks
+*.keystore
+# Flutter/Dart build state
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins-dependencies
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/Flutter.podspec
+mobile/ios/Flutter/ephemeral/
+mobile/android/.gradle/
+mobile/android/local.properties

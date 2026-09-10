@@ -1,0 +1,101 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      PERMISSIONS — every one of these is used, and every one is asked for at the moment it is
+      needed rather than at launch. Acceptance criterion C6.
+
+      INTERNET               submit an inspection, upload evidence, call /api/analyze, reach
+                             Supabase Auth. Not runtime-prompted; install-time only.
+      ACCESS_NETWORK_STATE   connectivity_plus, which is what tells the offline queue when to
+                             drain. Without it the app cannot know it has signal.
+      CAMERA                 image_picker. Photographing the asset under inspection.
+      ACCESS_FINE_LOCATION   geolocator. The coordinate is EVIDENCE that the technician was at
+                             the asset, and it is also personal data about that technician — so
+                             it is requested in context, explained in the UI, and the
+                             inspection files without it when refused.
+      ACCESS_COARSE_LOCATION declared alongside FINE because Android 12+ lets the person grant
+                             approximate location instead. Without it, a person who picks
+                             "Approximate" gets no fix at all rather than a coarse one.
+
+      DELIBERATELY ABSENT:
+      READ_EXTERNAL_STORAGE / READ_MEDIA_IMAGES — image_picker uses the system photo picker on
+      modern Android, which returns a single chosen file and needs no gallery-wide permission.
+      Asking for one would request read access to every photo on the device to obtain one
+      picture the person already selected.
+      WRITE_EXTERNAL_STORAGE — nothing is written outside app-private storage.
+      ACCESS_BACKGROUND_LOCATION — location is only ever read while the inspection screen is
+      open and in the foreground.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <!--
+      Neither is REQUIRED. A plant room may be inspected on a tablet with no camera and no GPS,
+      and both flows degrade honestly: the manual path files an inspection with no photo, and a
+      refused or unavailable fix files one with no coordinates. Marking either required would
+      hide the app from those devices on Google Play for no reason.
+    -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+
+    <!--
+      C4. `usesCleartextTraffic` and the network security config are both explicit rather than
+      inherited. The attribute already defaults to false on API 28+, but a merged library
+      manifest can turn it back on, and a default is not a decision anyone made. Everything
+      this app talks to — Supabase, the analyze endpoint, Nominatim — is HTTPS.
+
+      `allowBackup="false"`: signed inspection records, evidence photos and a session token are
+      not material for an unencrypted cloud backup that leaves the device.
+    -->
+    <application
+        android:label="EquipCert"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
