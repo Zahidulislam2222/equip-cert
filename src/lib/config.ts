@@ -59,6 +59,15 @@ export const config = {
     jpegQualityPercent: intEnv(process.env.NEXT_PUBLIC_CAPTURE_JPEG_QUALITY, 85),
   },
 
+  // Consent banner entrance. The notice is a legal control, so it may not be conditional on
+  // anything — but it may be *late*, and it should be: firing it into the first paint puts a
+  // card over the hero before the page has finished introducing itself, which is how a
+  // compliance control ends up reading as a defect (DEF-041). Nothing optional is stored
+  // during the delay, so the decision is still made before any storage it governs.
+  consent: {
+    bannerDelayMs: intEnv(process.env.NEXT_PUBLIC_CONSENT_BANNER_DELAY_MS, 1_400),
+  },
+
   // Geolocation — reverse geocoding provider and capture timeout (client-side)
   geo: {
     reverseGeocodeUrl:
