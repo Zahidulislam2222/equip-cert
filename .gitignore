@@ -91,3 +91,6 @@ deploy/generated/
 
 # Supabase CLI scratch state (regenerated)
 supabase/.temp/
+
+# Exported data from the retired Singapore project — contains personal data (Rule 8/11)
+_archive-*/
