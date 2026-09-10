@@ -28,7 +28,8 @@
     "test:types": "node scripts/check-generated-types.mjs",
     "test:migrations": "node scripts/check-migrations-applied.mjs",
     "test:unit": "node --test \"unit/*.test.mjs\"",
-    "test:rls-policies": "node scripts/check-rls-policies.mjs"
+    "test:rls-policies": "node scripts/check-rls-policies.mjs",
+    "test:load": "node scripts/load-test.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

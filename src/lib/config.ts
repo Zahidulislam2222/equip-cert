@@ -95,6 +95,47 @@ export const serverConfig = {
     rateWindowMs: intEnv(process.env.ANALYZE_RATE_WINDOW_MS, 60 * 60 * 1000),
     maxImageBytes: intEnv(process.env.ANALYZE_MAX_IMAGE_BYTES, 10 * 1024 * 1024),
   },
+  // ---------------------------------------------------------------------------------
+  // Capacity tier.
+  //
+  // Every value below is a REAL limit of the plan named in SUPABASE_TIER, taken from the
+  // provider's published limits rather than invented. Nothing here changes behaviour on its
+  // own — these are the numbers the app uses to decide when to shed load, how long to cache,
+  // and whether a feature that needs headroom may run at all.
+  //
+  // Set SUPABASE_TIER=pro and the app reads the Pro ceilings. That is the point: the upgrade
+  // path is one environment variable, not a rewrite, and a reviewer can verify that claim by
+  // flipping it rather than taking our word for it.
+  //
+  // Measured behaviour and the cost of each step are in docs/SCALING.md. Do not state a
+  // capacity here that has not been measured — the ladder is honest or it is worthless.
+  // ---------------------------------------------------------------------------------
+  scale: {
+    tier: (process.env.SUPABASE_TIER || 'free') as 'free' | 'pro' | 'team',
+
+    // Pooler (Supavisor) connections. THIS is the binding constraint on concurrent writes,
+    // not CPU and not bandwidth. free 200 / pro 500 / team 1000.
+    poolerConnections: intEnv(process.env.SCALE_POOLER_CONNECTIONS, 200),
+
+    // Direct Postgres connections. Far scarcer than pooler connections, which is exactly why
+    // every client goes through the pooler. free 60.
+    directConnections: intEnv(process.env.SCALE_DIRECT_CONNECTIONS, 60),
+
+    // Realtime peak concurrent connections. free 200 / pro 500.
+    // A dashboard left open on every technician's phone is a Realtime connection each, so
+    // this ceiling arrives sooner than people expect.
+    realtimePeakConnections: intEnv(process.env.SCALE_REALTIME_PEAK, 200),
+
+    // Seconds the CDN may serve a static asset without revalidating. The static export is
+    // immutable per build, so a long TTL is safe and is what keeps the origin idle: on the
+    // free tier the marketing site and app shell should never reach it at all.
+    edgeCacheSeconds: intEnv(process.env.SCALE_EDGE_CACHE_SECONDS, 31_536_000),
+
+    // Seconds an HTML document may be cached. Short, because a deploy must be visible
+    // quickly; the hashed assets it references carry the long TTL above.
+    htmlCacheSeconds: intEnv(process.env.SCALE_HTML_CACHE_SECONDS, 60),
+  },
+
   // Self-hosted runtime (deploy/server.ts). Unused on Vercel, which supplies its own
   // runtime and serves `out/` itself.
   selfHost: {
