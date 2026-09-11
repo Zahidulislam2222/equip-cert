@@ -84,8 +84,26 @@ jobs:
     name: Live service gates
     runs-on: ubuntu-latest
     needs: static
-    # Fork pull requests get no secrets; running would only produce noise.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Two populations get no secrets, and running this job for either only produces noise that
+    # looks like a real failure.
+    #
+    #   1. Fork pull requests — the usual case, and the reason this guard was written.
+    #   2. **Dependabot.** DEF-057. Its branches live in *this* repository, so the fork test
+    #      above passes, but GitHub deliberately withholds repository secrets from any event
+    #      whose actor is `dependabot[bot]` and serves a separate Dependabot secrets store
+    #      instead. The job therefore reached "Check required secrets are present" and stopped
+    #      there, which is the DEF-001 guard doing its job — the secrets really were absent.
+    #      Every Dependabot PR was blocked by a failure that had nothing to do with its diff.
+    #
+    # What is given up: a dependency bump is not checked against the live backend before merge.
+    # That is acceptable and bounded — `push` to `main` runs this job in full, so a bump that
+    # breaks the Supabase contract surfaces within one run rather than never. Mirroring eight
+    # secrets (including a service-role key) into a second store on a **public** repository is
+    # the larger risk, and it is the owner's call, not a workflow default.
+    if: >-
+      (github.event_name != 'pull_request'
+       || github.event.pull_request.head.repo.full_name == github.repository)
+      && github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v4
 
