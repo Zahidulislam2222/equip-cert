@@ -147,33 +147,37 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:rls
 
-      # `migration list` needs a database connection, so this is the one step that also needs
-      # the database password. The link is written to supabase/.temp, which is gitignored and
-      # discarded with the runner.
-      - name: Link the project
+      # There is deliberately NO `supabase link` step. DEF-053: `link` calls
+      # `GET /v1/projects/{ref}`, and the Management API refuses that one endpoint for a SCOPED
+      # access token — while granting every other endpoint these gates need, and while Supabase's
+      # own permission panel lists it as granted. Every command below takes
+      # `--linked --project-ref "$SUPABASE_PROJECT_REF"` instead, which needs no link file and no
+      # refused call. Verified 2026-09-11 against the live project with the scoped token.
+      #
+      # Do not "simplify" this back to `supabase link` unless the token in
+      # SUPABASE_ACCESS_TOKEN is a non-scoped one. It will fail, and the error message it prints
+      # blames the token/ref *pair*, which is not what is wrong.
+
+      # A migration that is merged but never applied does nothing, and the failure surfaces
+      # later as a missing column at runtime. The reverse — applied but not in the repository —
+      # means the schema was changed by hand, which is how DEF-019 lost a whole table.
+      #
+      # This is the one step that also needs the database password: `migration list` opens a
+      # real connection. The password travels through the environment, never as a command-line
+      # argument — `npm notice run` echoes the full command line, which is how it ended up in a
+      # session transcript once and had to be rotated by hand.
+      - name: Migrations are applied and tracked
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        # The password is passed through the environment, never as a command-line argument:
-        # `npm notice run` echoes the full command line, which is how the database password
-        # ended up in a session transcript and had to be rotated by hand.
         run: |
           if [ -z "$SUPABASE_DB_PASSWORD" ]; then
             echo "::error title=SUPABASE_DB_PASSWORD not set::The migration gate needs a"
             echo "database connection. Set it in Settings > Secrets and variables > Actions."
             exit 1
           fi
-          npx --silent supabase link --project-ref "$SUPABASE_PROJECT_REF"
-
-      # A migration that is merged but never applied does nothing, and the failure surfaces
-      # later as a missing column at runtime. The reverse — applied but not in the repository —
-      # means the schema was changed by hand, which is how DEF-019 lost a whole table.
-      - name: Migrations are applied and tracked
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: npm run test:migrations
+          npm run test:migrations
 
       # Supabase's own linters. They catch the class of thing a human review misses:
       # a table left without RLS, a function with a mutable search_path, a missing index
@@ -181,8 +185,9 @@ jobs:
       - name: Supabase security advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          result=$(npx --silent supabase db advisors --linked --type security 2>&1)
+          result=$(npx --silent supabase db advisors --linked --project-ref "$SUPABASE_PROJECT_REF" --type security 2>&1)
           echo "$result"
           # The only accepted finding is leaked-password protection, which is a Pro-plan
           # feature. It is answered client-side in src/lib/password-safety.ts instead.
@@ -194,8 +199,9 @@ jobs:
       - name: Supabase performance advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          result=$(npx --silent supabase db advisors --linked --type performance 2>&1)
+          result=$(npx --silent supabase db advisors --linked --project-ref "$SUPABASE_PROJECT_REF" --type performance 2>&1)
           echo "$result"
           if echo "$result" | grep -q '"level":"ERROR"'; then
             echo "::error title=Performance advisor::A performance finding at ERROR level appeared."

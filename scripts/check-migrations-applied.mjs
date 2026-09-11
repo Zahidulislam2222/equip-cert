@@ -17,7 +17,11 @@
  *
  * Usage:  npm run test:migrations
  *
- * Requires a linked project (`supabase link`), or SUPABASE_PROJECT_REF plus a link step in CI.
+ * Requires either a locally linked project (`supabase link`) or SUPABASE_PROJECT_REF.
+ *
+ * CI has no link step on purpose (DEF-053): `supabase link` calls `GET /v1/projects/{ref}`,
+ * which the Management API refuses for a scoped access token. `--linked --project-ref <ref>`
+ * needs no link file and no refused call, so the ref is passed explicitly whenever it is set.
  */
 
 import { exec } from 'node:child_process';
@@ -28,16 +32,27 @@ import { fileURLToPath } from 'node:url';
 const run = promisify(exec);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// Validated before interpolation for the same reason as in check-generated-types.mjs: `exec`
+// goes through a shell because `npx` is a .cmd shim on Windows, so the only value that reaches
+// the command line must be provably a project ref and nothing else.
+const ref = process.env.SUPABASE_PROJECT_REF;
+if (ref && !/^[a-z]{20}$/.test(ref)) {
+  console.error(`✗ SUPABASE_PROJECT_REF is not a valid project ref: ${ref}`);
+  process.exit(1);
+}
+const target = ref ? `--linked --project-ref ${ref}` : '--linked';
+
 let raw;
 try {
-  const { stdout } = await run('npx --silent supabase migration list --linked', {
+  const { stdout } = await run(`npx --silent supabase migration list ${target}`, {
     cwd: ROOT,
     maxBuffer: 8 * 1024 * 1024,
   });
   raw = stdout;
 } catch (error) {
   console.error('✗ Could not list migrations.');
-  console.error('  This gate needs `supabase link` to have been run against the project.');
+  console.error('  This gate needs either SUPABASE_PROJECT_REF + SUPABASE_DB_PASSWORD, or a');
+  console.error('  local `supabase link`. It does NOT need a link step in CI — see DEF-053.');
   console.error(`  ${error.stderr?.trim() || error.message}`);
   process.exit(1);
 }
