@@ -165,10 +165,16 @@ class AnalyzeApi {
       );
     }
 
-    return _parse(response);
+    return parseResponse(response);
   }
 
-  EquipmentAnalysis _parse(http.Response response) {
+  /// Map one HTTP response to a result or an explainable failure.
+  ///
+  /// Exposed for testing for the same reason as `ChecklistRepository.parseResponse`: `analyze`
+  /// returns early unless `AppInfo.apiBaseUrl` is non-empty, and that is a compile-time
+  /// `--dart-define` that CI's bare `flutter test` does not set.
+  @visibleForTesting
+  EquipmentAnalysis parseResponse(http.Response response) {
     if (response.statusCode == 200) {
       final Object? decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic>) {

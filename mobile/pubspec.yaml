@@ -61,6 +61,16 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   mocktail: ^1.0.5
+  # Already in the tree transitively (every plugin depends on it). Declared explicitly so the
+  # sync tests may import `MockPlatformInterfaceMixin` — substituting `ConnectivityPlatform`
+  # is the only way to drive the offline -> online transition without a device, and importing
+  # an undeclared transitive dependency trips `depend_on_referenced_packages`, which CI treats
+  # as fatal.
+  plugin_platform_interface: ^2.1.8
+  # Imported directly by the sync tests to substitute `ConnectivityPlatform.instance`.
+  # `connectivity_plus` re-exports `ConnectivityResult` from here, so the tests need this
+  # package and not the plugin itself.
+  connectivity_plus_platform_interface: ^2.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

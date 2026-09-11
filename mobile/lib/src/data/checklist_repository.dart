@@ -107,7 +107,10 @@ class ChecklistRepository {
 
       if (response.statusCode != 200) return fallbackChecklist;
 
-      final ChecklistResult result = _parse(response.body, equipmentName);
+      final ChecklistResult result = parseResponse(
+        response.body,
+        equipmentName,
+      );
       if (result.entries.isEmpty) return fallbackChecklist;
 
       _cache[key] = result;
@@ -121,16 +124,36 @@ class ChecklistRepository {
 
   /// Match an entry to the equipment, and read its questions.
   ///
+  /// Exposed for testing. `forEquipment` reaches this only when `ContentfulConfig.isConfigured`
+  /// is true, and that is a compile-time `--dart-define` which CI's bare `flutter test` never
+  /// sets — so through the public API this entire branch is unreachable in a test and the most
+  /// intricate parsing in the class would go unverified forever.
+  ///
   /// Contentful's Delivery API returns links as `sys.id` references with the linked entries in
   /// `includes.Entry`, so the equipment type has to be resolved through that side table rather
   /// than read inline. The web client's version calls `.getEntries()` with `include: 2`, which
   /// makes the SDK do the same resolution invisibly.
-  ChecklistResult _parse(String body, String equipmentName) {
-    final Object? decoded = jsonDecode(body);
+  @visibleForTesting
+  ChecklistResult parseResponse(String body, String equipmentName) {
+    // Decoding is guarded rather than left to the caller's blanket catch. `forEquipment` would
+    // have turned a FormatException into the fallback anyway, so behaviour is unchanged — but
+    // a method documented as never returning an empty checklist should not be able to throw
+    // its way out of that promise, and the sibling `AnalyzeApi` validates rather than casts.
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(body);
+    } on FormatException {
+      return fallbackChecklist;
+    }
     if (decoded is! Map<String, Object?>) return fallbackChecklist;
 
-    final List<Object?> items =
-        decoded['items'] as List<Object?>? ?? const <Object?>[];
+    // Checked, not cast. `decoded['items'] as List<Object?>?` throws a TypeError if the space
+    // ever returns an object here, which is a different failure mode reaching the same
+    // fallback by accident.
+    final Object? rawItems = decoded['items'];
+    final List<Object?> items = rawItems is List<Object?>
+        ? rawItems
+        : const <Object?>[];
     if (items.isEmpty) return fallbackChecklist;
 
     final Map<String, Map<String, Object?>> included = _includedEntries(
