@@ -182,31 +182,24 @@ jobs:
       # Supabase's own linters. They catch the class of thing a human review misses:
       # a table left without RLS, a function with a mutable search_path, a missing index
       # behind a foreign key.
+      #
+      # Both steps used to grep the CLI's output for `'"name":"..."'` inline here. That pattern
+      # only matches compact JSON, which the CLI emits *only when it detects an AI agent in the
+      # environment* — on a runner it pretty-prints, the grep matched nothing, and the step went
+      # green no matter what the advisors said. DEF-056. The logic lives in a script now, the
+      # output shape is pinned with `--output-format json --agent no`, and output it cannot
+      # parse is a failure rather than a pass.
       - name: Supabase security advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: |
-          result=$(npx --silent supabase db advisors --linked --project-ref "$SUPABASE_PROJECT_REF" --type security 2>&1)
-          echo "$result"
-          # The only accepted finding is leaked-password protection, which is a Pro-plan
-          # feature. It is answered client-side in src/lib/password-safety.ts instead.
-          if echo "$result" | grep -o '"name":"[^"]*"' | grep -v 'auth_leaked_password_protection' | grep -q .; then
-            echo "::error title=Security advisor::A new security finding appeared."
-            exit 1
-          fi
+        run: npm run test:advisors -- security
 
       - name: Supabase performance advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-        run: |
-          result=$(npx --silent supabase db advisors --linked --project-ref "$SUPABASE_PROJECT_REF" --type performance 2>&1)
-          echo "$result"
-          if echo "$result" | grep -q '"level":"ERROR"'; then
-            echo "::error title=Performance advisor::A performance finding at ERROR level appeared."
-            exit 1
-          fi
+        run: npm run test:advisors -- performance
 
   # ---------------------------------------------------------------------------
   # The Flutter client — Android.

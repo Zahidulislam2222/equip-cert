@@ -27,6 +27,7 @@
     "gen:types": "npx --silent supabase gen types typescript --linked > src/lib/database.types.ts",
     "test:types": "node scripts/check-generated-types.mjs",
     "test:migrations": "node scripts/check-migrations-applied.mjs",
+    "test:advisors": "node scripts/check-supabase-advisors.mjs",
     "test:unit": "node --test \"unit/*.test.mjs\"",
     "test:rls-policies": "node scripts/check-rls-policies.mjs",
     "test:load": "node scripts/load-test.mjs",

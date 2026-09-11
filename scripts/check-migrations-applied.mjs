@@ -22,6 +22,13 @@
  * CI has no link step on purpose (DEF-053): `supabase link` calls `GET /v1/projects/{ref}`,
  * which the Management API refuses for a scoped access token. `--linked --project-ref <ref>`
  * needs no link file and no refused call, so the ref is passed explicitly whenever it is set.
+ *
+ * `--output-format json --agent no` is not decoration either (DEF-056). The Supabase CLI
+ * sniffs its environment for an AI agent and switches to compact JSON when it finds one.
+ * Run from an agent session it emits `{"migrations":[...]}`; run on a CI runner it emits an
+ * ASCII table, and this parser — written against the first — could never have passed in
+ * Actions. Both flags are stated so the output shape is a property of the command rather than
+ * of who happened to type it.
  */
 
 import { exec } from 'node:child_process';
@@ -41,10 +48,11 @@ if (ref && !/^[a-z]{20}$/.test(ref)) {
   process.exit(1);
 }
 const target = ref ? `--linked --project-ref ${ref}` : '--linked';
+const FORMAT = '--output-format json --agent no';
 
 let raw;
 try {
-  const { stdout } = await run(`npx --silent supabase migration list ${target}`, {
+  const { stdout } = await run(`npx --silent supabase migration list ${target} ${FORMAT}`, {
     cwd: ROOT,
     maxBuffer: 8 * 1024 * 1024,
   });
@@ -61,6 +69,8 @@ try {
 const match = raw.match(/\{[\s\S]*\}\s*$/);
 if (!match) {
   console.error('✗ Could not parse the migration list output.');
+  console.error('  Expected a JSON object from `--output-format json`. If this printed an');
+  console.error('  ASCII table instead, the CLI ignored the flag — see DEF-056.');
   console.error(raw.slice(0, 800));
   process.exit(1);
 }
