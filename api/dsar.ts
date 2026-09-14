@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { config, serverConfig } from '../src/lib/config';
-import { RateLimiter } from '../src/lib/rate-limit';
+import { limiterFor } from '../src/lib/server-rate-limit';
 import { z } from 'zod';
 
 /**
@@ -26,7 +26,7 @@ import { z } from 'zod';
  * a human obligation attached; verification and fulfilment happen in the admin queue.
  */
 
-const limiter = new RateLimiter({ windowMs: serverConfig.dsar.rateWindowMs });
+const limiter = limiterFor(serverConfig.dsar.rateWindowMs);
 
 /**
  * Deliberately narrow. Every field is either supplied by the subject about themselves, or it is
@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || 'unknown';
-  if (limiter.hit(`dsar:${clientIp}`, serverConfig.dsar.rateLimit).limited) {
+  if ((await limiter.hit(`dsar:${clientIp}`, serverConfig.dsar.rateLimit)).limited) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
 

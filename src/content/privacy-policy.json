@@ -14,8 +14,8 @@
     "GDPR Art. 13(1)(a) requires the controller's real identity, and a contact address that",
     "bounces is a failure to provide it, not a formality. Fill these in before going live."
   ],
-  "documentVersion": "2026-09-10",
-  "effectiveDate": "2026-09-10",
+  "documentVersion": "2026-09-14",
+  "effectiveDate": "2026-09-15",
 
   "controller": {
     "legalName": "[CONTROLLER LEGAL NAME]",
@@ -145,6 +145,11 @@
             "Art. 7(1) requires us to be able to demonstrate consent was given, which is impossible if the record is deleted with it"
           ],
           [
+            "Audit log entries",
+            "For the life of your organisation’s account; your account reference is removed on erasure",
+            "Accountability for changes to safety records (Art. 5(2)) outlives any one member of the organisation, but it does not need to keep identifying them"
+          ],
+          [
             "Data subject request records",
             "Two years from completion",
             "To show a request was received, verified and answered within the deadline"
@@ -185,7 +190,8 @@
       "heading": "Security",
       "paragraphs": [
         "Data is encrypted in transit with TLS and at rest by the hosting platform. Every table is protected by database-level row security, so a query issued on behalf of one organisation cannot return another's rows even if application code is wrong. Signed inspection records cannot be modified or deleted. Evidence photographs and signatures are in private storage and are only reachable through short-lived signed links. The site is served with a Content Security Policy and HSTS.",
-        "Two things we will not claim. We do not currently log every read access to personal data; an append-only audit table exists in the schema but it is not yet written to on access, and saying otherwise would be a false security claim. And we do not claim an uptime figure, because the deployment has no redundancy that would justify one.",
+        "Security- and compliance-relevant changes are recorded in an append-only audit log: inspections created, edited or erased, changes of role or plan, corrective actions, privacy requests and consent. The database writes each entry itself, in the same transaction as the change, so an entry cannot exist for a change that did not happen and a change cannot be committed without its entry. An entry names the acting account and what changed, never a name, an email address or free text. Only managers and administrators of your own organisation can read it. Nobody using the service — including administrators of your organisation and our own support tools — can edit an entry: the database only accepts changes that remove personal references, and entries are deleted only together with your organisation's account. The operators who maintain the underlying database hold technical access that sits outside these controls; that access is restricted to authorised personnel. When you exercise the right to erasure, your account reference — both where you took an action and where an entry is about you — and any address are removed from the entries, while the record that an action happened is kept.",
+        "Two things we will not claim. We do not log every READ of personal data — the audit log records changes, not views — and saying otherwise would be a false security claim. And we do not promise an uptime figure. The architecture documents availability targets for a scaled, redundant deployment, but the service as currently deployed runs on a single server, which does not justify promising one.",
         "No system is perfectly secure. If we become aware of a breach affecting your personal data we will notify the relevant supervisory authority within 72 hours where Article 33 requires it, and tell you directly where Article 34 requires it."
       ]
     },

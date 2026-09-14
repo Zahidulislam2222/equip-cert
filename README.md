@@ -9,13 +9,13 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF?style=flat-square&logo=capacitor&logoColor=white)](https://capacitorjs.com/)
+[![Flutter](https://img.shields.io/badge/Flutter-Android%20%2B%20iOS-02569B?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev/)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-635BFF?style=flat-square&logo=stripe&logoColor=white)](https://stripe.com/)
 [![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)](#license)
 
-**Identify equipment with AI. Run safety checklists. Generate OSHA-compliant reports. All from your phone.**
+**Identify equipment with AI. Run safety checklists. Produce signed inspection records built around OSHA 29 CFR 1910.157 and NFPA 10. All from your phone.**
 
-[Live Demo](#) &nbsp;&middot;&nbsp; [Documentation](#architecture) &nbsp;&middot;&nbsp; [Getting Started](#getting-started)
+[Built to scale](#built-to-scale) &nbsp;&middot;&nbsp; [Architecture](#architecture) &nbsp;&middot;&nbsp; [Security](SECURITY.md) &nbsp;&middot;&nbsp; [Getting Started](#getting-started)
 
 ---
 
@@ -25,7 +25,7 @@
 
 Field equipment inspections still rely on paper checklists, manual data entry, and filing cabinets. This leads to:
 
-- **73% audit failure rate** with paper-based records (vs 96% with digital)
+- Records that are incomplete, illegible or missing when an auditor asks for them
 - Hours wasted identifying equipment and finding the right checklist
 - No real-time visibility into fleet compliance
 - Corrective actions lost in email threads
@@ -33,7 +33,7 @@ Field equipment inspections still rely on paper checklists, manual data entry, a
 
 ## The Solution
 
-EquipCert AI replaces the entire paper workflow with a mobile-first platform. A technician points their phone camera at any equipment — AI identifies it, loads the correct safety checklist, captures GPS-tagged evidence, and generates a signed, OSHA-compliant report in seconds.
+EquipCert AI replaces the entire paper workflow with a mobile-first platform. A technician points their phone camera at any equipment — AI identifies it, loads the correct safety checklist, captures GPS-tagged evidence, and produces a signed, immutable inspection record and PDF report. The technician reviews and signs every AI suggestion; the model never decides.
 
 Managers get a real-time dashboard showing fleet compliance, failed items requiring attention, and corrective action tracking.
 
@@ -60,7 +60,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **Corrective Actions** | Track failed items through open → in-progress → resolved workflow |
 | **Equipment Registry** | Full fleet inventory with inspection history and due-date tracking |
 | **Inspection Scheduling** | Recurring schedules (daily/weekly/monthly/quarterly) with overdue alerts |
-| **PDF Reports** | Downloadable OSHA-compliant inspection reports |
+| **PDF Reports** | Downloadable inspection reports, machine-readably marked when AI-assisted (EU AI Act Art. 50) |
 | **Team Management** | Role-based access control — admin, manager, technician |
 | **Real-time Notifications** | Instant alerts for failures, overdue actions, and upcoming inspections |
 
@@ -71,8 +71,33 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **Multi-AI Provider** | Swap between Gemini, OpenAI, or Claude via environment variable — zero code changes |
 | **Multi-Tenant** | Organization-scoped data isolation with Row Level Security |
 | **Industrial Dark Theme** | Dark-first design with ANSI safety colors + Framer Motion animations across all pages. Light mode toggle available |
-| **Mobile App** | Android APK via Capacitor — same codebase |
-| **Stripe Billing** | Free / Pro / Enterprise tiers with feature gating |
+| **Mobile App** | Native Flutter client for Android and iOS (`mobile/`), sharing the backend, schema and compliance contracts |
+| **Plan Tiers** | Free / Pro / Enterprise limits enforced by a database trigger. Stripe checkout is integrated but not configured |
+
+---
+
+## Built to scale
+
+The architecture is designed so that going from one container to tens of thousands of concurrent
+users is **configuration and provisioning, not a rewrite**. What is measured, what is built, and
+what is only designed-for are labelled separately — the current deployment is a single container
+on a free-tier database and claims none of the large numbers.
+
+| Property | Where | Status |
+|---|---|---|
+| Static export served from the edge — most traffic never reaches an origin | `next.config.ts`, cache headers | Built |
+| Stateless origin: N replicas behind a `least_conn` pool with `/readyz` health checks | `deploy/deploy.config.json` → `npm run deploy:gen` | Built, `caddy validate` OK |
+| Kubernetes: rolling updates with `maxUnavailable: 0`, HPA 3→50, PodDisruptionBudget, NetworkPolicy, non-root read-only pods | `deploy/k8s/` | Built, kubeconform valid, drift-checked in CI |
+| Graceful drain: readiness fails before the listener closes, hard deadline after — zero-downtime rolling deploys **at ≥ 2 replicas** (the current VPS runs 1, so a restart there still drops requests) | `deploy/server.ts` | Drain sequence **verified** 13/13 in the production image; zero-downtime not yet measured |
+| Rate limits shared across replicas, keys hashed, never fail open | `src/lib/rate-limit.ts` | Built, unit tested |
+| Tenant isolation enforced by Postgres RLS, so more replicas cannot weaken it | `supabase/migrations/` | Verified by e2e suite |
+| Read replica routing with the user's JWT, config-gated | `src/lib/supabase.ts` | Built; no replica provisioned |
+| Capacity test with SLO thresholds: smoke / 10k / 100k / 1M profiles | `load/k6/capacity-plan.js` | Built, `k6 inspect` valid, not yet run at scale |
+| Origin throughput, one process | `npm run test:load` | **Measured**: ~3,600 req/s, 0 failures at 300 concurrent |
+| Continuous production check: health, readiness, headers, compiled backend | `.github/workflows/production-check.yml` | Built |
+
+- **[docs/SCALING.md](docs/SCALING.md)** — the capacity model for 10k / 100k / 1M concurrent, the arithmetic, the order things break in, and the cost ladder.
+- **[docs/AVAILABILITY.md](docs/AVAILABILITY.md)** — SLOs per tier (99.9 % / 99.95 %), error budgets, failure modes, RPO/RTO and runbooks.
 
 ---
 
@@ -80,7 +105,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│              Static Export (Vercel + Capacitor)          │
+│        Static Export (Vercel or self-host + Flutter)     │
 │                                                         │
 │  Landing ─── Auth ─── Protected App Shell               │
 │   /           /auth    /app                              │
@@ -108,7 +133,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
  └──────────────┘  └──────────────────┘
 ```
 
-> **Key constraint:** `output: "export"` in Next.js config for Capacitor mobile compatibility. This means no middleware, no server components, no API routes in the app directory. All auth is client-side. API endpoints are standalone Vercel serverless functions.
+> **Key constraint:** `output: "export"` in Next.js config — a static site the edge can cache. This means no middleware, no server components, no API routes in the app directory. All auth is client-side. API endpoints are standalone Vercel serverless functions.
 
 ---
 
@@ -124,7 +149,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | Database | **Supabase PostgreSQL** | 8 tables, Row Level Security, realtime subscriptions |
 | AI | **Gemini / OpenAI / Claude** | Abstracted provider — swap via env var |
 | Payments | **Stripe** | Subscriptions, webhooks, customer portal |
-| Mobile | **Capacitor 8** | Native camera, GPS, offline — one codebase |
+| Mobile | **Flutter** | Native Android + iOS client with camera, GPS and offline queue |
 | CMS | **Contentful** | Dynamic equipment checklists managed by non-developers |
 | PDF | **react-pdf/renderer** | Server-quality inspection reports in the browser |
 | Offline | **IndexedDB** | Queue submissions offline, auto-sync on reconnect |
@@ -143,7 +168,7 @@ organizations ─┬── profiles (role-based: admin / manager / technician)
                │   └── corrective_actions (severity, assignment, resolution)
                ├── schedules (recurring per equipment)
                ├── notifications (realtime via Supabase)
-               └── audit_log (immutable write log)
+               └── audit_log (append-only, written by database triggers)
 ```
 
 All tables enforce **Row Level Security** — users only see data from their organization. Signed inspection records are **immutable** (database trigger prevents modification after signature).
@@ -154,10 +179,14 @@ All tables enforce **Row Level Security** — users only see data from their org
 
 | Standard | Implementation |
 |----------|---------------|
-| **OSHA 29 CFR 1926** | All required fields enforced (equipment ID, inspector name + qualifications + job title, datetime, findings, corrective actions), server-generated timestamps, competent person tracking, 5-year retention, equipment out-of-service enforcement |
-| **ESIGN Act** | Affirmative consent checkbox before signing, attribution (user + timestamp + device), immutable signed records (DB trigger), withdrawal rights documented, paper copy request option |
-| **CCPA/CPRA 2026** | Full privacy policy (data categories, purposes, third parties, retention by type, all rights), terms of service, cookie consent with GPC signal auto-honor, opt-out disclosure |
-| **SOC 2 Ready** | RBAC, RLS data isolation, audit logging, CSP + HSTS headers, rate limiting, input validation — designed for future certification |
+| **OSHA 29 CFR 1910.157(e)(3) / NFPA 10** | Inspector, date and findings on every record; server-generated timestamps; signed records immutable. Retention follows 1910.157(e)(3) — one year after the last entry or the life of the shell — not the "5 years" an earlier version of this README cited from an unrelated rule |
+| **ESIGN / UETA / eIDAS Art. 25(1)** | Affirmative consent before signing, attribution to the signed-in user, immutable signed records |
+| **GDPR** | Record of processing, sub-processor list, breach procedure, data subject request intake with statutory deadlines, erasure that separates the person from the safety record (`docs/compliance/`) |
+| **US state privacy (CCPA/CPRA and others)** | Consent with equal-prominence reject, Global Privacy Control honoured, rights request intake |
+| **EU AI Act Art. 50** | AI-derived results disclosed before signing; provenance stamped server-side; PDF reports marked machine-readably ([classification memo](docs/compliance/ai-act-classification.md)) |
+
+Not claimed: SOC 2 or any other certification, and legal review — the policies contain
+placeholders for the operator's legal identity and have not been reviewed by counsel.
 
 ### Security Hardening
 
@@ -165,11 +194,13 @@ All tables enforce **Row Level Security** — users only see data from their org
 |-----------|---------------|
 | **API Authentication** | JWT verification on `/api/analyze` — unauthenticated requests rejected |
 | **Input Validation** | Zod schema on all API inputs — type, size, and format enforced |
-| **Rate Limiting** | 20 requests/hour per IP on AI endpoint |
-| **RLS (Row Level Security)** | All 8 tables scoped to organization — no cross-tenant access |
+| **Rate Limiting** | Per IP and per account on the AI and privacy-request endpoints, shared across replicas when a store is configured |
+| **RLS (Row Level Security)** | Every table scoped to organization and FORCEd; cross-tenant isolation proven by an e2e suite |
+| **Audit Log** | Changes to inspections, roles, plans, equipment and privacy requests written by triggers; clients cannot write or edit it |
+| **Server Hardening** | Header/request/keep-alive timeouts, bounded bodies, graceful drain, non-root read-only container |
 | **Feature Gating (DB-level)** | PostgreSQL trigger enforces free plan limits — cannot bypass via DevTools |
 | **Immutable Records** | Signed inspections cannot be UPDATE'd or DELETE'd (trigger) |
-| **CSP Headers** | Content-Security-Policy, Strict-Transport-Security, X-Frame-Options DENY |
+| **Security Headers** | CSP, HSTS, COOP, CORP, frame-ancestors none — one source for Vercel and self-host. Vulnerability reporting: [SECURITY.md](SECURITY.md) |
 | **Open Redirect Prevention** | Notification URLs validated (`startsWith('/')` only) |
 | **Offline Integrity** | SHA-256 hash on queued submissions — tampered data rejected on sync |
 | **Secret Protection** | `.env*`, `*.key`, `*.keystore`, `.claude/` all gitignored |
@@ -199,12 +230,15 @@ npm install
 cp .env.example .env.local
 # Edit .env.local with your keys
 
-# Run database migration
-# Paste supabase/migrations/001_production_schema.sql in Supabase SQL Editor
+# Apply the database migrations (supabase/migrations/, applied in filename order)
+npx supabase db push
 
 # Start dev server
 npm run dev
 ```
+
+Never point the e2e suite (`npm run test:rls`) at a project holding real customer data — run it
+against a local stack (`npx supabase start`).
 
 ### Environment Variables
 
@@ -235,65 +269,61 @@ See [`.env.example`](.env.example) for the full list.
 
 ```
 equip-cert/
-├── api/                          # Vercel serverless functions
-│   ├── analyze.ts                #   AI image analysis (provider-abstracted)
-│   └── webhooks/stripe.ts        #   Stripe subscription webhooks
-├── app/
-│   ├── page.tsx                  # Marketing landing page
-│   ├── auth/                     # Login + Signup (split-screen UI)
-│   ├── app/                      # Protected app (16 routes)
-│   │   ├── dashboard/            #   Manager dashboard + corrective actions
-│   │   ├── equipment/            #   Equipment registry CRUD
-│   │   ├── inspect/              #   Technician inspection flow
-│   │   └── ...                   #   schedule, team, reports, settings
-│   ├── components/
-│   │   ├── auth/                 #   AuthProvider, ProtectedRoute
-│   │   ├── layout/               #   AppLayout (sidebar + topbar)
-│   │   ├── motion/               #   9 Framer Motion primitives (FadeInView, StaggerGrid, etc.)
-│   │   ├── shared/               #   GPS, Signatures, Notifications, Offline
-│   │   └── ...                   #   dashboard, technician, equipment, corrective
+├── api/                          # Standalone serverless handlers (Vercel or the self-host adapter)
+│   ├── analyze.ts                #   AI image analysis — auth, rate limits, provider-abstracted
+│   ├── dsar.ts                   #   Privacy / data subject request intake
+│   └── webhooks/stripe.ts        #   Stripe webhooks
+├── src/
+│   ├── app/                      # Static-export routes: landing, auth, /app, privacy, terms
+│   ├── components/               # auth, dashboard, technician, corrective, shared
+│   ├── content/                  # Policy and terms copy — single owner, rendered by pages
 │   └── lib/
-│       ├── ai/                   #   Provider factory (Gemini/OpenAI/Claude)
-│       ├── config.ts             #   Central env-var config
-│       ├── auth.ts               #   Auth helpers
-│       ├── stripe.ts             #   Plans + feature gating
-│       └── offline.ts            #   IndexedDB queue + sync
-├── supabase/migrations/          # SQL schema (8 tables, RLS, triggers)
-└── android/                      # Capacitor Android project
+│       ├── config.ts             #   The ONLY reader of process.env (enforced by test:config)
+│       ├── plans.ts              #   The ONLY owner of prices and plan limits
+│       ├── supabase.ts           #   Primary + read-replica clients
+│       ├── rate-limit.ts         #   Memory and shared Redis-REST limiters
+│       ├── pdf-provenance.ts     #   AI Act Art. 50 report marking
+│       └── ai/                   #   Provider factory (Gemini / OpenAI / Claude)
+├── mobile/                       # Flutter Android + iOS client
+├── supabase/migrations/          # Schema, RLS, triggers, audit log
+├── deploy/                       # Self-host server, Dockerfile, config, generated k8s manifests
+├── load/k6/                      # Capacity plan with SLO thresholds
+├── e2e/ · unit/                  # Database authorization suite · unit tests
+└── docs/                         # SCALING, AVAILABILITY, compliance records
 ```
 
 ---
 
 ## Pricing Model
 
-| | Free | Pro | Enterprise |
-|---|---|---|---|
-| **Price** | $0 | $29/user/mo | $79/user/mo |
-| Users | 1 | Unlimited | Unlimited |
-| Inspections | 10/mo | Unlimited | Unlimited |
-| AI Analyses | 5/mo | Unlimited | Unlimited |
-| Corrective Actions | - | Yes | Yes |
-| Digital Signatures | - | Yes | Yes |
-| Scheduling | - | Yes | Yes |
-| SSO / SAML | - | - | Yes |
-| API Access | - | - | Yes |
-| Custom Branding | - | - | Yes |
+Free, Pro and Enterprise tiers. Prices, limits and feature lists live in exactly one place,
+[`src/lib/plans.ts`](src/lib/plans.ts), and the landing page and the database limit trigger are
+generated from it — so they are deliberately not restated here, where they would drift.
 
 ---
 
 ## Deployment
 
-### Web (Vercel)
+### Web
 
-Push to `main` — Vercel auto-deploys. Set environment variables in the Vercel dashboard.
+Two targets from one build, with the same security headers (derived from `vercel.json`):
 
-### Mobile (Android)
+- **Vercel** — static export plus the `api/` handlers.
+- **Self-host** — `deploy/server.ts` in a non-root container behind Caddy. `npm run deploy:gen -- --release <id>`
+  generates the Caddy site file, `compose.yaml` and the Kubernetes manifests from
+  `deploy/deploy.config.json`. Never hand-edit the generated files.
 
-GitHub Actions automatically builds an APK on every push to `main`. Download from the Actions tab.
+`NEXT_PUBLIC_*` values are compiled into the bundle: build with the production app URL and the
+production Supabase project, then run `npm run test:production` against the deployment.
+
+### Mobile
+
+CI builds and verifies the Flutter Android release and compiles iOS on macOS. See `mobile/README.md`.
 
 ### Database
 
-Run `supabase/migrations/001_production_schema.sql` in the Supabase SQL Editor. This creates all 8 tables, indexes, RLS policies, and the signed-record immutability trigger.
+`npx supabase db push` applies `supabase/migrations/` in order. `npm run test:migrations` and
+`npm run test:types` confirm the live schema matches the repository.
 
 ---
 
@@ -306,17 +336,21 @@ Run `supabase/migrations/001_production_schema.sql` in the Supabase SQL Editor. 
 | GoAudits | Custom | Full offline mode with auto-sync, GPS evidence |
 | SmartQHSE | Custom | Simpler UX, faster onboarding, mobile-first |
 
-**Our differentiator:** AI-powered equipment identification + multi-provider AI abstraction + full US compliance stack (OSHA + ESIGN + CCPA) — in a mobile-first platform that works offline.
+**Our differentiator:** AI-powered equipment identification + multi-provider AI abstraction + compliance built into the data model (OSHA/NFPA record-keeping, e-signature, GDPR and US state privacy, EU AI Act disclosure) — in a mobile-first platform that works offline.
 
 ---
 
 ## Commands
 
 ```bash
-npm run dev      # Development server
-npm run build    # Production build (static export)
-npm run lint     # ESLint
-npm run start    # Serve production build
+npm run dev              # Development server
+npm run build            # Static export (includes the configuration-boundary gate)
+npm run build:server     # Bundle the self-host server
+npm test                 # Config boundary, schema, deploy-manifest drift, unit tests
+npm run lint             # ESLint
+npm run test:rls         # Database authorization + audit log e2e (local stack only)
+npm run test:load        # Origin throughput harness
+npm run test:production  # Check a deployment: health, readiness, headers, compiled backend
 ```
 
 ---
@@ -335,6 +369,6 @@ Proprietary. All rights reserved.
 
 <div align="center">
 
-**Built with** &nbsp; Next.js &middot; React &middot; Supabase &middot; Tailwind &middot; Capacitor &middot; Stripe
+**Built with** &nbsp; Next.js &middot; React &middot; Supabase &middot; Tailwind &middot; Flutter &middot; Stripe
 
 </div>

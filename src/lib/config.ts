@@ -20,6 +20,9 @@ export const config = {
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    // Data API endpoint of a read replica (Supabase Pro + replica). Empty = no replica: the
+    // read client IS the primary client. Lag-tolerant aggregate reads route through it.
+    readReplicaUrl: process.env.NEXT_PUBLIC_SUPABASE_READ_REPLICA_URL || '',
   },
 
   // Contentful
@@ -134,6 +137,22 @@ export const serverConfig = {
     rateLimit: intEnv(process.env.DSAR_RATE_LIMIT, 5),
     rateWindowMs: intEnv(process.env.DSAR_RATE_WINDOW_MS, 60 * 60 * 1000),
   },
+  // Where rate-limit counters live. `memory` is per process: correct for one instance, and N
+  // times the limit across N replicas. `redis-rest` shares one budget across every replica and
+  // region through a Redis REST endpoint (Upstash-compatible `/pipeline`), with no new
+  // dependency. If the store is unreachable each process falls back to its own memory limiter —
+  // degraded, never open. See src/lib/rate-limit.ts.
+  rateLimitStore: {
+    // Passed through as written, so a typo reaches createRateLimiter and is reported rather than
+    // quietly becoming `memory`.
+    kind: process.env.RATE_LIMIT_STORE || 'memory',
+    url: process.env.RATE_LIMIT_REDIS_URL || '',
+    token: process.env.RATE_LIMIT_REDIS_TOKEN || '',
+    timeoutMs: intEnv(process.env.RATE_LIMIT_REDIS_TIMEOUT_MS, 250),
+    keyPrefix: process.env.RATE_LIMIT_KEY_PREFIX || 'equipcert:rl',
+    // A store outage falls back on every request; log the reason at most this often per process.
+    fallbackLogIntervalMs: intEnv(process.env.RATE_LIMIT_FALLBACK_LOG_INTERVAL_MS, 60_000),
+  },
   // ---------------------------------------------------------------------------------
   // Capacity tier.
   //
@@ -182,5 +201,20 @@ export const serverConfig = {
     staticDir: process.env.SELF_HOST_STATIC_DIR || 'out',
     // Max bytes accepted for any single request body before the adapter rejects it.
     maxRequestBytes: intEnv(process.env.SELF_HOST_MAX_REQUEST_BYTES, 12 * 1024 * 1024),
+    // Slowloris guard: a client must finish sending headers within this budget.
+    headersTimeoutMs: intEnv(process.env.SELF_HOST_HEADERS_TIMEOUT_MS, 15_000),
+    // Whole-request budget. Generous because /api/analyze waits on a third-party model.
+    requestTimeoutMs: intEnv(process.env.SELF_HOST_REQUEST_TIMEOUT_MS, 120_000),
+    // Must EXCEED the proxy's upstream idle timeout (the generated Caddy file sets 60s), or the
+    // proxy reuses a socket this process has just closed and the client sees a spurious 502.
+    keepAliveTimeoutMs: intEnv(process.env.SELF_HOST_KEEPALIVE_TIMEOUT_MS, 65_000),
+    // On SIGTERM /readyz reports 503 for this long BEFORE the listener closes, so the load
+    // balancer's health check notices and stops routing here while requests still succeed.
+    // Must be longer than the health check interval in the generated Caddy file and k8s probe.
+    drainDelayMs: intEnv(process.env.SELF_HOST_DRAIN_DELAY_MS, 5_000),
+    // Hard deadline for in-flight requests after the listener closes. Past it, remaining
+    // sockets are destroyed. Keep drainDelay + grace below the orchestrator's kill timeout
+    // (compose stop_grace_period / k8s terminationGracePeriodSeconds, both generated at 30s).
+    shutdownGraceMs: intEnv(process.env.SELF_HOST_SHUTDOWN_GRACE_MS, 20_000),
   },
 } as const;

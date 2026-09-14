@@ -128,10 +128,21 @@ Not processed. The product is used by qualified technicians at work.
 - Service-role credentials never leave server handlers and are never `NEXT_PUBLIC_`
 - Secret scanning (gitleaks) and SAST (bandit, semgrep) on every commit
 
-**Honestly stated limitations.** Access to personal data is not currently logged per read — an
-append-only audit table exists but is not yet written on access. On the free hosting plan a
-refresh token does not expire on its own. There is no redundancy, so no availability figure is
-claimed. Breached-password checking runs client-side rather than being enforced at the
+- Append-only audit log of security- and compliance-relevant **changes** (inspections, corrective
+  actions, membership and roles, organisation plan and retention, equipment, privacy requests,
+  consent), written by database triggers in the same transaction as the change. Entries hold the
+  acting account, the subject account where relevant, and the changed column names, never names,
+  emails or free text; clients cannot insert; no application role (anon, authenticated, service_role) can edit an entry — the only permitted
+  UPDATE removes personal references, and DELETE happens only in the cascade from deleting the
+  organisation. The database owner role used for migrations and the SQL editor can disable the
+  append-only trigger: that is operator access outside the application, not a client path, and is
+  restricted to authorised personnel. Erasure removes the subject's account reference (as actor and as subject) and
+  address from entries through that redaction shape (DEF-059). Verified by `e2e/audit-log.test.mjs`
+
+**Honestly stated limitations.** READS of personal data are not logged — the audit log records
+changes, not views. On the free hosting plan a refresh token does not expire on its own. The
+current deployment is a single server with no redundancy, so no availability figure is claimed;
+`docs/AVAILABILITY.md` states design targets for a redundant deployment, labelled as such. Breached-password checking runs client-side rather than being enforced at the
 authentication server. Each of these is tracked; none is described here as done.
 
 ## 6. Why no Data Protection Officer

@@ -1,0 +1,55 @@
+name: Production synthetic check
+
+# An uptime monitor for what the product actually does, not whether a port answers.
+#
+# DEF-058: the live site returned 200 for weeks while the Supabase project baked into its
+# JavaScript did not exist. A "does / return 200" monitor is green for that entire outage.
+# scripts/check-production.mjs checks liveness, readiness, the security headers, that the API is
+# mounted, and that the backend in the SHIPPED bundle is the intended one and still exists.
+#
+# Read-only: GET requests against public URLs. No deploy credentials are involved.
+
+on:
+  schedule:
+    # Every 30 minutes. At 99.9% monthly availability the error budget is ~43 minutes, so a
+    # check less frequent than this could miss most of a budget-burning incident.
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Live product works
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify the intended backend is configured
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: |
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+            echo "::error title=Check cannot compare backends::NEXT_PUBLIC_SUPABASE_URL is not set,"
+            echo "so this job could not tell a bundle pointing at a deleted project from a healthy one."
+            echo "That is the exact failure (DEF-058) it exists to catch."
+            exit 1
+          fi
+
+      # No dependencies to install: the script uses only Node built-ins.
+      - name: Run the synthetic check
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          # Optional override, e.g. a staging URL. Defaults to deploy.config.json's hostname.
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: node scripts/check-production.mjs

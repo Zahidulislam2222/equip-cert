@@ -363,7 +363,11 @@ export function InspectionHero() {
           </div>
         </div>
 
-        {/* Hotspot markers, projected onto the moving geometry every frame. */}
+        {/* Hotspot markers, projected onto the moving geometry every frame.
+            Only the scene's frame loop gives them a position, so until the model has loaded
+            they sit unplaced at left-0 top-0 — all three stacked in the corner over the
+            headline, on top of the holding frame. Hidden until the scene reports ready
+            (DEF-065). `invisible` also keeps them out of the tab order meanwhile. */}
         {MODEL.hotspots.map((hotspot, i) => (
           <button
             key={hotspot.id}
@@ -371,7 +375,7 @@ export function InspectionHero() {
             type="button"
             onClick={() => selectHotspot(hotspot.id)}
             aria-pressed={selected === hotspot.id}
-            className={`absolute left-0 top-0 z-20 flex h-9 w-9 items-center justify-center rounded-full border text-[13px] font-semibold tabular-nums transition-colors duration-300 ${
+            className={`absolute left-0 top-0 z-20 flex h-9 w-9 items-center justify-center rounded-full border text-[13px] font-semibold tabular-nums transition-colors duration-300 ${ready ? '' : 'invisible'} ${
               selected === hotspot.id
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-primary/55 bg-background/85 text-primary hover:border-primary hover:bg-background'

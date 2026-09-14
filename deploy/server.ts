@@ -21,8 +21,20 @@ import dsarHandler from '../api/dsar';
 import stripeWebhookHandler from '../api/webhooks/stripe';
 import { serverConfig } from '../src/lib/config';
 
-const { port, staticDir, maxRequestBytes } = serverConfig.selfHost;
+const {
+  port,
+  staticDir,
+  maxRequestBytes,
+  headersTimeoutMs,
+  requestTimeoutMs,
+  keepAliveTimeoutMs,
+  drainDelayMs,
+  shutdownGraceMs,
+} = serverConfig.selfHost;
 const STATIC_ROOT = resolve(process.cwd(), staticDir);
+
+/** Set on SIGTERM. Readiness fails while it is true; liveness does not. See `shutdown`. */
+let draining = false;
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -333,22 +345,49 @@ async function sendStatic(
   createReadStream(filePath).on('error', () => res.destroy()).pipe(res);
 }
 
-const server = createServer(async (req, res) => {
+// connectionsCheckingInterval is how often Node actually ENFORCES headersTimeout and
+// requestTimeout. Its default is 30s, so a 15s headersTimeout was really "15-45s": a slow-headers
+// client held its socket for over 8s against a 2s timeout in tests/server_drain_test.mjs.
+// A quarter of the tighter timeout bounds the overshoot to 25%; derived, not a separate setting.
+const connectionsCheckingInterval = Math.max(250, Math.floor(Math.min(headersTimeoutMs, requestTimeoutMs) / 4));
+
+const server = createServer({ connectionsCheckingInterval }, async (req, res) => {
   const method = req.method || 'GET';
   const url = new URL(req.url || '/', 'http://localhost');
   const pathname = url.pathname;
 
   try {
-    // Container healthcheck. Deliberately cheap and dependency-free.
+    // While draining, tell keep-alive clients (the proxy included) not to reuse this socket, so
+    // connections migrate to healthy replicas instead of queueing on one that is leaving.
+    if (draining) res.setHeader('Connection', 'close');
+
+    // LIVENESS: is the process able to serve at all? Restarting on a failure here is correct.
+    // Deliberately cheap and dependency-free — a liveness probe that checks the database turns
+    // a database blip into every replica being restarted at once.
     if (pathname === '/healthz') {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
       res.end('ok\n');
+      return;
+    }
+
+    // READINESS: should the load balancer send this replica new traffic? False while draining,
+    // which is what makes a rolling deploy lose no requests. Distinct from liveness on purpose:
+    // a draining replica is healthy and must NOT be restarted.
+    if (pathname === '/readyz') {
+      res.statusCode = draining ? 503 : 200;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(draining ? 'draining\n' : 'ready\n');
       return;
     }
 
     const apiHandler = API_ROUTES.get(pathname);
     if (apiHandler) {
+      // API responses are per-caller (auth, rate-limit state, DSAR receipts). No shared cache —
+      // the proxy, a CDN or a browser — may ever store one. A handler may still override it.
+      res.setHeader('Cache-Control', 'no-store');
       let vreq: VercelRequest;
       try {
         vreq = await decorateRequest(req, pathname, url.searchParams);
@@ -410,12 +449,54 @@ const server = createServer(async (req, res) => {
   }
 });
 
+// Timeouts. Node's defaults leave headersTimeout at 60s and keepAliveTimeout at 5s — the first is
+// generous to a slowloris client, the second is SHORTER than any sensible proxy idle timeout and
+// produces intermittent 502s behind a load balancer that reuses the socket just as it closes.
+server.headersTimeout = headersTimeoutMs;
+server.requestTimeout = requestTimeoutMs;
+server.keepAliveTimeout = keepAliveTimeoutMs;
+
 server.listen(port, () => {
   console.log(`EquipCert self-host runtime listening on ${port}, serving ${STATIC_ROOT}`);
 });
 
+/**
+ * Graceful drain. Zero-downtime rolling deploys depend on the ORDER of these steps:
+ *
+ *   1. Readiness fails first (/readyz -> 503) while the listener stays open, for drainDelayMs.
+ *      The load balancer's health check sees it and stops sending NEW requests here. Requests
+ *      that arrive during the window — routed before the check noticed — still succeed.
+ *   2. The listener closes. Idle keep-alive sockets are closed immediately; sockets with a
+ *      request in flight are allowed to finish.
+ *   3. A hard deadline destroys whatever is still open, so a hung upstream call can never stop
+ *      a deploy. The exit code says which way it went.
+ *
+ * The previous version was step 2 alone: `server.close()` with no readiness signal and no
+ * deadline. The proxy kept routing to a closing process, and one slow AI call could hold the
+ * container until the orchestrator SIGKILLed it mid-response.
+ */
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  draining = true;
+  console.log(`${signal} received: failing readiness for ${drainDelayMs}ms, then draining`);
+
+  setTimeout(() => {
+    server.close(() => {
+      console.log('Drained cleanly');
+      process.exit(0);
+    });
+    server.closeIdleConnections();
+
+    setTimeout(() => {
+      console.error(`Shutdown grace of ${shutdownGraceMs}ms exceeded; destroying open connections`);
+      server.closeAllConnections();
+      process.exit(1);
+    }, shutdownGraceMs).unref();
+  }, drainDelayMs).unref();
+}
+
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-  process.on(signal, () => {
-    server.close(() => process.exit(0));
-  });
+  process.on(signal, () => shutdown(signal));
 }

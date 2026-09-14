@@ -70,7 +70,7 @@ Two obligations with two deadlines, routinely conflated:
 | | Obligation | Applies from | Status |
 |---|---|---|---|
 | Art. 50(1) | Disclose to the person that they are interacting with / receiving AI output | **2 Aug 2026, no grace period** | **Implemented** |
-| Art. 50(2) | Mark generated output in a machine-readable format | 2 Aug 2026, with pre-existing systems given until **2 Dec 2026** (AI Omnibus, May 2026) | **Planned — see §7** |
+| Art. 50(2) | Mark generated output in a machine-readable format | 2 Aug 2026, with pre-existing systems given until **2 Dec 2026** (AI Omnibus, May 2026) | **Implemented for the inspection PDF — limits in §7** |
 
 **Art. 50(1) as implemented.** When any part of an inspection is AI-derived, the technician sees
 a disclosure panel *before* the checklist they are about to sign. It is not dismissible and it
@@ -84,6 +84,24 @@ ran. A database constraint (`ai_provenance_is_complete`) rejects a partially-fil
 record cannot claim AI assistance without naming the system, or name a system without admitting
 assistance.
 
+**Art. 50(2) as implemented.** The inspection report PDF is the copy of the output that leaves
+the system, so it carries the mark. `src/lib/pdf-provenance.ts` builds it from the provenance
+columns above; `InspectionReportPDF.tsx` only renders what it returns.
+
+- **Machine-readable:** the PDF Info dictionary. `/Keywords` holds `key=value` pairs —
+  `ai-assisted`, `ai-provider`, `ai-model`, `ai-disclosed-at`, `record-id`,
+  `disclosure=eu-ai-act-art-50` — and the same pairs are repeated at the end of `/Subject`.
+  A human-only record is marked `ai-assisted=false` and never names a provider.
+- **Human-readable:** a visible disclosure line on the report naming the provider and model.
+- **Proof:** `unit/pdf-provenance.test.mjs` renders a real PDF with the production library and
+  reads `/Keywords` and `/Subject` back out of the bytes.
+
+That test caught a real defect before it shipped: `@react-pdf/renderer` 4.3.2 declares a
+`keywords` prop in its types but reads `keyboards` (a typo) when writing `/Keywords`, so the
+first implementation produced PDFs with no Keywords entry at all while every props-level test
+passed. Both names are now passed, and the pairs are duplicated into `/Subject` so the mark does
+not depend on that one field.
+
 ## 6. Human oversight, recorded honestly
 
 There is no automated decision-making within the meaning of GDPR Art. 22 here. The model never
@@ -93,13 +111,22 @@ determines the outcome; it proposes a starting point. The technician:
 - can change the equipment name and any checklist item,
 - signs, and the signature is what makes the record immutable.
 
-## 7. Known gap
+## 7. Known gaps
 
-**Machine-readable marking (Art. 50(2)) is not yet implemented.** Generated inspection PDFs do
-not currently embed a machine-readable marker identifying AI-assisted content. The deadline for
-this system is **2 December 2026**. The intended approach is embedded document metadata plus a
-C2PA-style assertion; this memo will be updated when it ships. It is recorded here as an open
-gap rather than omitted, because an incomplete compliance record is worse than an honest one.
+The Art. 50(2) marking in §5 is real but deliberately described at its actual strength:
+
+- **Metadata, not a watermark.** Info-dictionary entries survive copying and emailing, but anyone
+  who re-saves or prints the PDF can strip them. There is no C2PA manifest and no cryptographic
+  signature binding the mark to the content. The Commission's Art. 50 code of practice was still
+  being finalised when this was written; this memo is to be revisited against it before the
+  **2 December 2026** deadline for this system.
+- **XMP is not written.** The renderer does not emit an XMP metadata stream, so tools that read
+  only XMP will not see the mark.
+- **The PDF is the only marked export.** Screen views carry the Art. 50(1) disclosure, not a
+  machine-readable mark; if a CSV or API export of inspection data is added, it needs its own.
+
+Recorded here rather than omitted, because an incomplete compliance record is worse than an
+honest one.
 
 ## 8. Third-country transfer
 

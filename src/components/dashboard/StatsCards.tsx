@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ClipboardCheck, AlertTriangle, ShieldCheck, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { supabaseRead } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { StaggerContainer, StaggerItem } from '@/components/motion/StaggerGrid';
 import { MotionCard } from '@/components/motion/MotionCard';
@@ -94,7 +94,8 @@ export function StatsCards() {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      let query = supabase
+      // A monthly aggregate tolerates replica lag; routed to the read replica when one is configured.
+      let query = supabaseRead
         .from('inspections')
         .select('status')
         .gte('created_at', startOfMonth.toISOString());

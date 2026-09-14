@@ -22,13 +22,23 @@ import type { Database } from './database.types';
 export const supabase = createClient<Database>(config.supabase.url, config.supabase.anonKey);
 
 // ---------------------------------------------------------------------------------------
-// UPGRADE PATH — read replicas (Supabase Pro + replica, ladder step 3 in docs/SCALING.md)
+// READ REPLICA ROUTING (Supabase Pro + replica, ladder step 3 in docs/SCALING.md)
 //
-// THIS IS NOT ACTIVE. It is deliberately inert and left visible so the routing seam and its
-// cost are legible without provisioning anything. No replica exists on the free tier, so
-// there is no URL to point it at — the code cannot run, and pretending otherwise by wiring a
-// fallback to the primary would silently make every "replica" read hit the primary and make
-// the whole exercise a lie.
+// Real and config-gated. Set NEXT_PUBLIC_SUPABASE_READ_REPLICA_URL to a replica's Data API
+// endpoint and `supabaseRead` sends its queries there; leave it empty (the free-tier default)
+// and `supabaseRead` is the primary client itself. The fallback is not hidden: callers and
+// reviewers can read `readReplicaEnabled`, so a "replica" read that is really hitting the
+// primary is a visible, deliberate state rather than a silent one.
+//
+// WHY THE ACCESS TOKEN IS BRIDGED. Supabase serves Auth only from the primary — a replica
+// endpoint cannot sign anyone in (Supabase read-replica docs). The replica client therefore
+// owns no session: `accessToken` hands it the primary client's current user JWT on every
+// request, so PostgREST on the replica evaluates the SAME auth.uid() and the same RLS
+// policies. With no session the library sends the anon key (supabase-js 2.102
+// fetchWithAuth), which RLS treats as anonymous — never as elevated.
+//
+// Not verified against a real replica: none is provisioned (paid). What IS verified is the
+// library contract above and that the fallback path is the primary client.
 //
 // WHY IT IS THE RIGHT NEXT STEP. The measured static ceiling is a CPU-bound Node process,
 // which is cheap to multiply (ladder step 1, $0). The ceiling that actually costs money is
@@ -39,21 +49,21 @@ export const supabase = createClient<Database>(config.supabase.url, config.supab
 // budget for the writes that must not queue — inspection submissions from technicians in the
 // field.
 //
-// WHAT TURNING IT ON WOULD TAKE:
-//   1. Provision a read replica (Supabase Pro, from ~$0.02/hour).
-//   2. Add SUPABASE_REPLICA_URL to src/lib/config.ts and .env.example.
-//   3. Uncomment below and route read-only queries in the reporting and dashboard paths
-//      through `supabaseRead` instead of `supabase`.
+// WHAT TURNING IT ON TAKES: provision a replica (Supabase Pro, paid — see SCALING.md), set the
+// env var, rebuild. No code change.
 //
-// WHAT WOULD NOT CHANGE, AND WHY THAT IS THE POINT: nothing about authorization. RLS is
-// enforced by Postgres and replicated with the data, so a replica cannot be more permissive
-// than the primary. Reads stay tenant-scoped without a single application-side check — which
-// is precisely why the authorization boundary was put in the database rather than in
-// middleware.
+// WHAT MAY USE IT: only reads that tolerate replication lag (asynchronous; seconds). The
+// monthly dashboard aggregate does. Lists a user just wrote to do NOT — they stay on
+// `supabase`, or a technician would file an inspection and not see it.
 //
-// export const supabaseRead = createClient<Database>(
-//   config.supabase.replicaUrl,
-//   config.supabase.anonKey,
-//   { db: { schema: 'public' } },
-// );
+// WHAT DOES NOT CHANGE: authorization. The replica is a physical copy of the same database,
+// policies included, so it cannot be more permissive than the primary.
 // ---------------------------------------------------------------------------------------
+
+export const readReplicaEnabled = config.supabase.readReplicaUrl !== '';
+
+export const supabaseRead = readReplicaEnabled
+  ? createClient<Database>(config.supabase.readReplicaUrl, config.supabase.anonKey, {
+      accessToken: async () => (await supabase.auth.getSession()).data.session?.access_token ?? null,
+    })
+  : supabase;

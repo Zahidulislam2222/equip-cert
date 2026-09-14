@@ -46,6 +46,12 @@ jobs:
       - name: Plan limits match plans.ts
         run: npm run test:schema
 
+      - name: Kubernetes manifests match deploy.config.json
+        run: npm run test:deploy
+
+      - name: Unit tests
+        run: npm run test:unit
+
       - name: Lint
         run: npm run lint
 

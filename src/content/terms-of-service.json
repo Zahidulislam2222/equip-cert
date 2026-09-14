@@ -1,0 +1,170 @@
+{
+  "$comment": [
+    "Single owner of the Terms of Service text (global Rule 12). src/app/terms/page.tsx renders it and restates none of it.",
+    "",
+    "documentVersion is the date the WORDING last changed, hand-edited when it does — never generated at read time. The page this replaced printed `new Date()` as 'Last updated', so the terms claimed to have been revised on whatever day they were opened, which makes it impossible to show which version someone agreed to. A consent record of purpose 'terms' stores this version.",
+    "",
+    "Corrections made in 2026-09-14 against the page this replaced, each of which was a false statement:",
+    "  * It cited 'OSHA compliance (29 CFR 1926)' with records 'retained for 5+ years'. 29 CFR 1926 is the construction standard. Portable fire extinguisher maintenance records fall under 29 CFR 1910.157(e)(3): an annual maintenance check, recorded and kept for one year after the last entry or the life of the shell, whichever is less. Keeping personal data five times longer than required is a storage-limitation breach, not caution.",
+    "  * Its liability clause excluded liability for 'safety incidents' without qualification. Liability for death or personal injury caused by negligence, for fraud, and liability that consumer or product-liability law makes non-excludable cannot be excluded by contract in the EU/UK or in many US states; a clause that pretends otherwise is unenforceable and misleading.",
+    "  * It said nothing about AI. The EU AI Act Art. 50 transparency obligation applies to how the product presents AI-assisted output.",
+    "",
+    "PLACEHOLDERS IN SQUARE BRACKETS are deliberate and match the privacy policy: this is a demonstration product with no incorporated provider, and inventing a legal entity, governing law or address would be worse than an obvious blank. Fill them in, and have the result reviewed by counsel, before accepting a paying customer."
+  ],
+  "documentVersion": "2026-09-14",
+  "effectiveDate": "2026-09-14",
+
+  "provider": {
+    "legalName": "[PROVIDER LEGAL NAME]",
+    "address": "[PROVIDER REGISTERED ADDRESS]",
+    "email": "[LEGAL CONTACT EMAIL]",
+    "governingLaw": "[GOVERNING LAW AND COURTS — TO BE SET BY THE PROVIDER]"
+  },
+
+  "intro": "These terms govern use of the service by organisations and the people they invite. They are written to be read: where a clause limits what you can expect from us, it says so plainly, and where the law does not allow a limit, the clause does not pretend it does.",
+
+  "sections": [
+    {
+      "id": "acceptance",
+      "heading": "1. Agreeing to these terms",
+      "paragraphs": [
+        "By creating an account or using the service you agree to these terms. If you use it on behalf of an organisation, you confirm you are authorised to bind that organisation, and 'you' includes it.",
+        "The service is intended for business use by fire-safety and facilities professionals. If you are nonetheless a consumer, nothing in these terms reduces the rights consumer protection law in your country of residence gives you."
+      ]
+    },
+    {
+      "id": "service",
+      "heading": "2. What the service does",
+      "paragraphs": [
+        "The service helps qualified people inspect equipment and keep the records safety rules require: equipment registers, digital checklists, photographic evidence, location capture, electronic signatures, corrective-action workflows, scheduling and PDF reports."
+      ],
+      "notes": [
+        "The service is a record-keeping and workflow tool. It does not inspect anything itself, it does not certify equipment, and it does not replace the judgement of a competent person."
+      ]
+    },
+    {
+      "id": "accounts",
+      "heading": "3. Accounts and your organisation",
+      "paragraphs": [
+        "Each account belongs to one organisation. Administrators decide who joins, what role they hold, and how long the organisation keeps its records within the limits the law allows.",
+        "You are responsible for keeping sign-in credentials confidential and for the actions taken under your account. Tell your administrator, and us, promptly if you suspect an account has been compromised."
+      ]
+    },
+    {
+      "id": "ai",
+      "heading": "4. AI-assisted analysis",
+      "paragraphs": [
+        "When you photograph equipment, the photograph may be sent to a third-party AI vision model that returns suggestions — a likely equipment type, a serial number, an apparent condition. This is disclosed in the product before you rely on it, in line with Article 50 of the EU Artificial Intelligence Act.",
+        "Suggestions can be wrong. You must review every checklist item yourself before signing. The signed checklist, not the model's output, is the inspection record, and the person who signs is the inspector of record. The AI is never named as the inspector, and no decision about equipment is taken by the model.",
+        "Every record states whether AI assistance was used and which provider and model produced it, and every PDF report generated from an AI-assisted record carries that disclosure both visibly and in the file's metadata."
+      ]
+    },
+    {
+      "id": "esign",
+      "heading": "5. Electronic signatures",
+      "paragraphs": [
+        "Inspection records are signed electronically. In the United States this relies on the Electronic Signatures in Global and National Commerce Act (15 U.S.C. § 7001 et seq.) and the Uniform Electronic Transactions Act as adopted by your state. In the EU, a signature made here is a simple electronic signature under Regulation (EU) No 910/2014 (eIDAS); under Article 25(1) it may not be denied legal effect solely because it is electronic. It is not a qualified electronic signature, and where a rule requires one, this signature does not meet it.",
+        "Before your first signature you are asked to consent affirmatively to signing electronically. By consenting and then confirming a signature, you agree that the electronic record and signature carry the same effect as a paper record signed by hand."
+      ],
+      "list": [
+        "Hardware and software: a current version of Chrome, Safari, Firefox or Edge with JavaScript enabled and TLS 1.2 or later, or the mobile app. A touch screen makes signature capture easier but is not required.",
+        "Withdrawing consent: you may withdraw consent to sign electronically at any time by contacting your administrator or us. Withdrawal affects future signatures only; records already signed remain valid.",
+        "Paper copies: you may download any signed record as a PDF at any time, or ask us for a copy.",
+        "Immutability: a signed record cannot be edited or deleted by anyone, including us. The one permitted change is the removal of a person's identifying details when they exercise their right to erasure; the finding, the equipment and the time are kept."
+      ]
+    },
+    {
+      "id": "regulatory",
+      "heading": "6. Your regulatory obligations",
+      "paragraphs": [
+        "In the United States, 29 CFR 1910.157(e)(3) requires portable fire extinguishers to be given a maintenance check at least annually, with the date recorded and the record kept for one year after the last entry or for the life of the shell, whichever is less. NFPA 10 and the fire code adopted where you operate may set additional or longer requirements, and where they do, those apply.",
+        "The service is designed to make meeting these requirements easier. Meeting them remains your responsibility: choosing competent inspectors, inspecting at the required intervals, taking equipment out of service when it fails, and keeping records for as long as the rules that apply to you require. Equipment marked out of service must not be used until a competent person has cleared it."
+      ]
+    },
+    {
+      "id": "acceptable-use",
+      "heading": "7. Acceptable use",
+      "paragraphs": [
+        "You must not use the service to falsify an inspection record, to sign on someone else's behalf, to upload content you have no right to upload, or to break the law."
+      ],
+      "list": [
+        "Do not attempt to access another organisation's data, or to bypass rate limits, authentication or row-level security.",
+        "Security research is welcome when it follows the disclosure policy in SECURITY.md in the source repository: report privately, do not access data that is not yours, and do not degrade the service for others. Research that follows that policy is not a breach of these terms.",
+        "Automated load against the production service requires our written agreement in advance."
+      ]
+    },
+    {
+      "id": "plans",
+      "heading": "8. Plans, billing and cancellation",
+      "paragraphs": [
+        "Plan prices, limits and features are shown on the pricing page, which is the only place they are stated. Paid plans are billed in advance through our payment processor; card details never reach our systems.",
+        "You may cancel at any time. Access continues to the end of the period already paid for. We will give at least 30 days' notice of a price increase, and it applies from your next billing period.",
+        "If a paid plan ends, the organisation moves to the free plan. Records are not deleted because a plan ended; the free plan's limits apply to new records."
+      ]
+    },
+    {
+      "id": "data",
+      "heading": "9. Your data",
+      "paragraphs": [
+        "Your organisation owns the inspection records, photographs and reports it creates. You grant us only the rights needed to host, process and display that data to provide the service to you.",
+        "For inspection records we act as your processor, on your instructions, as described in the privacy policy. For your account and the operation of the service we are the controller. The privacy policy explains what we collect, why, where it goes and how long it is kept.",
+        "If your organisation's account closes, administrators may export its data for 30 days. After that, account data is deleted, except records a law requires to be kept for longer, which are kept only as long as that law requires."
+      ]
+    },
+    {
+      "id": "availability",
+      "heading": "10. Availability",
+      "paragraphs": [
+        "We work to keep the service available and to announce planned maintenance in advance, but we do not promise a specific uptime percentage under these terms. Availability targets described in the project's technical documentation are engineering design targets for a scaled deployment, not a contractual service level. A service-level agreement, where offered, is a separate written document.",
+        "Because the service can be unavailable, do not rely on it as the only copy of records you are legally required to produce on demand. Download reports you may need offline."
+      ]
+    },
+    {
+      "id": "warranty",
+      "heading": "11. Warranties",
+      "paragraphs": [
+        "To the extent the law allows, the service is provided as it is and as available, and we disclaim implied warranties of merchantability, fitness for a particular purpose and non-infringement. We do not warrant that AI suggestions are accurate or that the service is free of errors.",
+        "Some jurisdictions do not allow implied warranties to be excluded. Where that is the case, those warranties apply to the minimum extent and for the minimum period the law requires."
+      ]
+    },
+    {
+      "id": "liability",
+      "heading": "12. Limitation of liability",
+      "paragraphs": [
+        "To the extent the law allows, neither party is liable to the other for indirect or consequential loss, or for loss of profit, revenue or goodwill, and each party's total liability arising out of these terms in any twelve-month period is limited to the fees paid or payable for the service in the twelve months before the claim arose.",
+        "Nothing in these terms limits or excludes liability for death or personal injury caused by negligence, for fraud or fraudulent misrepresentation, for gross negligence or wilful misconduct, for a party's breach of its data protection obligations to the extent the law does not permit a limit, or for any other liability that cannot be limited or excluded under applicable law, including mandatory consumer and product liability law."
+      ]
+    },
+    {
+      "id": "termination",
+      "heading": "13. Suspension and termination",
+      "paragraphs": [
+        "You may stop using the service and close your organisation's account at any time.",
+        "We may suspend or close an account that materially breaches these terms — for example by falsifying records or attacking the service — and will give notice and a chance to remedy the breach first unless the breach puts other customers, their data or the service at risk. Sections 9, 11, 12 and 14 survive termination."
+      ]
+    },
+    {
+      "id": "law",
+      "heading": "14. Governing law and disputes",
+      "paragraphs": [
+        "These terms are governed by the law identified at the top of this document, and its courts have jurisdiction, except where the law of your country of residence gives you the right to bring proceedings, or to rely on mandatory protections, elsewhere.",
+        "Nothing in these terms prevents you from complaining to a data protection supervisory authority or another regulator."
+      ]
+    },
+    {
+      "id": "changes",
+      "heading": "15. Changes to these terms",
+      "paragraphs": [
+        "When the wording changes, the version date at the top changes with it. For a material change we will give at least 30 days' notice in the product before it takes effect, and continued use after that date is acceptance of the new version. Agreement to an earlier version is recorded against that version and is not silently carried over."
+      ]
+    },
+    {
+      "id": "contact",
+      "heading": "16. Contact",
+      "paragraphs": [
+        "Questions about these terms: write to the provider at the address at the top of this document. Privacy requests: use the privacy request form, which records the statutory deadline automatically."
+      ],
+      "cta": { "label": "Read the privacy policy", "href": "/privacy" }
+    }
+  ]
+}

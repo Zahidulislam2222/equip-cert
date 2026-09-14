@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { createAIProvider } from '../src/lib/ai/provider';
 import { config, serverConfig } from '../src/lib/config';
-import { RateLimiter } from '../src/lib/rate-limit';
+import { limiterFor } from '../src/lib/server-rate-limit';
 import { z } from 'zod';
 
 /**
@@ -16,7 +16,7 @@ import { z } from 'zod';
  *
  * Limits come from serverConfig.analyze — never redeclare them here.
  */
-const limiter = new RateLimiter({ windowMs: serverConfig.analyze.rateWindowMs });
+const limiter = limiterFor(serverConfig.analyze.rateWindowMs);
 
 // Input validation schema
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // unauthenticated flood away from the token-verification round trip, not to meter usage.
   const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || 'unknown';
   const ipBudget = serverConfig.analyze.rateLimit * serverConfig.analyze.ipBurstFactor;
-  if (limiter.hit(`ip:${clientIp}`, ipBudget).limited) {
+  if ((await limiter.hit(`ip:${clientIp}`, ipBudget)).limited) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
@@ -70,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // The real meter: the account spending the AI budget, not the gateway it happens to sit
   // behind. An office of ten technicians on one NAT gets ten budgets, and an attacker who
   // rotates addresses still gets one.
-  if (limiter.hit(`user:${authData.user.id}`, serverConfig.analyze.rateLimit).limited) {
+  if ((await limiter.hit(`user:${authData.user.id}`, serverConfig.analyze.rateLimit)).limited) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 

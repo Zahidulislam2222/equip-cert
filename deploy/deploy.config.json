@@ -1,12 +1,72 @@
 {
-  "_comment": "Single owner for this app's shared-VPS allocation (Global Rule 12). The Caddy site file and compose.yaml are GENERATED from this file by scripts/gen-deploy-artifacts.mjs — never hand-edit the generated copies. The matching ownership row lives in the private _shared-infrastructure/INFRASTRUCTURE.md registry.",
+  "_comment": "Single owner for this app's deployment topology (Global Rule 12). The Caddy site file, compose.yaml (both gitignored, per release) and the Kubernetes manifests in deploy/k8s/ (committed, drift-checked) are GENERATED from this file by scripts/gen-deploy-artifacts.mjs — never hand-edit the generated copies. The shared-VPS ownership row lives in the private _shared-infrastructure/INFRASTRUCTURE.md registry.",
   "slug": "equipcert",
   "hostname": "equipcert.zahidul-islam.com",
   "loopbackPort": 18081,
   "containerPort": 8080,
+  "_replicas": "Replicas on the shared VPS. Each takes loopbackPort + index, so raising this ALLOCATES ports on a shared host: inspect live state (ss -tlnp) and update the registry first. 1 is the current allocation.",
+  "replicas": 1,
   "resources": {
     "memLimit": "512m",
     "cpus": 1.0,
     "pidsLimit": 256
+  },
+  "proxy": {
+    "_comment": "Caddy upstream pool. healthIntervalSeconds must stay below SELF_HOST_DRAIN_DELAY_MS, or a draining replica keeps receiving traffic. upstreamKeepaliveSeconds must stay below SELF_HOST_KEEPALIVE_TIMEOUT_MS.",
+    "lbPolicy": "least_conn",
+    "readinessPath": "/readyz",
+    "healthIntervalSeconds": 2,
+    "healthTimeoutSeconds": 1,
+    "failDurationSeconds": 10,
+    "lbTryDurationSeconds": 5,
+    "upstreamKeepaliveSeconds": 60
+  },
+  "shutdown": {
+    "_comment": "Orchestrator kill timeout. Must exceed runtime.drainDelayMs + runtime.shutdownGraceMs.",
+    "stopGraceSeconds": 30
+  },
+  "runtime": {
+    "_comment": "Server lifecycle timings for every GENERATED deployment. The generator injects them into the container environment (overriding app.env / the ConfigMap) and asserts the invariants against these exact values, so what is checked is what runs. src/lib/config.ts defaults apply only when the server runs outside a generated deployment.",
+    "drainDelayMs": 5000,
+    "shutdownGraceMs": 20000,
+    "keepAliveTimeoutMs": 65000,
+    "requestTimeoutMs": 120000
+  },
+  "healthcheck": {
+    "_comment": "Liveness check: compose healthcheck, Kubernetes livenessProbe and startupProbe. livenessPath must be the cheap endpoint deploy/server.ts answers without touching dependencies.",
+    "livenessPath": "/healthz",
+    "intervalSeconds": 10,
+    "timeoutSeconds": 3,
+    "retries": 3,
+    "startPeriodSeconds": 5
+  },
+  "kubernetes": {
+    "_comment": "Reference topology for running beyond one host. Not deployed anywhere today. The image is a placeholder: a kustomize overlay or CI must pin it by digest per release (imagePullPolicy Always guards the mutable tag until then). ingressNamespace is the only namespace allowed to reach the pods.",
+    "namespace": "equipcert",
+    "ingressNamespace": "ingress-nginx",
+    "image": "ghcr.io/zahidulislam2222/equipcert:release",
+    "replicas": 3,
+    "minReplicas": 3,
+    "maxReplicas": 50,
+    "targetCpuPercent": 65,
+    "minAvailable": 2,
+    "requests": { "cpu": "250m", "memory": "256Mi" },
+    "limits": { "cpu": "1", "memory": "512Mi" },
+    "runAsUser": 1000,
+    "configMapName": "equipcert-config",
+    "secretName": "equipcert-secrets",
+    "revisionHistoryLimit": 5,
+    "maxSurge": "25%",
+    "servicePort": 80,
+    "tmpSizeLimit": "64Mi",
+    "_startupProbe": "periodSeconds x failureThreshold is the startup budget before liveness takes over.",
+    "startupProbe": { "periodSeconds": 1, "failureThreshold": 30 },
+    "_readinessFailureThreshold": "1: a draining pod leaves the endpoints on its first 503.",
+    "readinessFailureThreshold": 1,
+    "_autoscalingBehavior": "Scale up fast, scale down slowly: a spike should never wait, and flapping costs more than an idle replica.",
+    "autoscalingBehavior": {
+      "scaleUp": { "stabilizationWindowSeconds": 0, "policies": [{ "type": "Percent", "value": 100, "periodSeconds": 30 }] },
+      "scaleDown": { "stabilizationWindowSeconds": 300, "policies": [{ "type": "Percent", "value": 20, "periodSeconds": 60 }] }
+    }
   }
 }
