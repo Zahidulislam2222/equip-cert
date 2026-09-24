@@ -8,10 +8,14 @@
 // bundled with esbuild (already a build dependency) rather than imported directly. The bundle
 // is what the browser would run, which makes this a test of shipped behaviour rather than of
 // a reimplementation.
+//
+// esbuild is driven through its JS API, not by running `node node_modules/esbuild/bin/esbuild`:
+// on Linux, npm replaces that file with the native ELF binary, so Node fails to parse it. That
+// passed on Windows (where the file is a JS shim) and failed every test on the CI runner.
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { buildSync } from 'esbuild';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -45,19 +49,14 @@ function makeStorage() {
 before(() => {
   workDir = mkdtempSync(join(tmpdir(), 'equipcert-unit-'));
   const outFile = join(workDir, 'consent.mjs');
-  execFileSync(
-    process.execPath,
-    [
-      join('node_modules', 'esbuild', 'bin', 'esbuild'),
-      'src/lib/compliance/consent.ts',
-      '--bundle',
-      '--format=esm',
-      '--platform=neutral',
-      '--log-level=warning',
-      `--outfile=${outFile}`,
-    ],
-    { stdio: 'inherit' },
-  );
+  buildSync({
+    entryPoints: ['src/lib/compliance/consent.ts'],
+    bundle: true,
+    format: 'esm',
+    platform: 'neutral',
+    logLevel: 'warning',
+    outfile: outFile,
+  });
   return import(pathToFileURL(outFile).href).then((m) => {
     consent = m;
   });

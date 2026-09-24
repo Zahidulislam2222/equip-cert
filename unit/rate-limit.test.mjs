@@ -9,7 +9,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { buildSync } from 'esbuild';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,19 +22,15 @@ let workDir;
 before(() => {
   workDir = mkdtempSync(join(tmpdir(), 'equipcert-unit-'));
   const outFile = join(workDir, 'rate-limit.mjs');
-  execFileSync(
-    process.execPath,
-    [
-      join('node_modules', 'esbuild', 'bin', 'esbuild'),
-      'src/lib/rate-limit.ts',
-      '--bundle',
-      '--format=esm',
-      '--platform=neutral',
-      '--log-level=warning',
-      `--outfile=${outFile}`,
-    ],
-    { stdio: 'inherit' },
-  );
+  // esbuild's JS API, not its bin file: on Linux that file is the native binary (see consent.test.mjs).
+  buildSync({
+    entryPoints: ['src/lib/rate-limit.ts'],
+    bundle: true,
+    format: 'esm',
+    platform: 'neutral',
+    logLevel: 'warning',
+    outfile: outFile,
+  });
   return import(pathToFileURL(outFile).href).then((m) => {
     RateLimiter = m.RateLimiter;
     createRateLimiter = m.createRateLimiter;

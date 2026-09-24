@@ -7,7 +7,7 @@
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { buildSync } from 'esbuild';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,19 +19,15 @@ let workDir;
 before(async () => {
   workDir = mkdtempSync(join(tmpdir(), 'equipcert-unit-'));
   const outFile = join(workDir, 'pdf-provenance.mjs');
-  execFileSync(
-    process.execPath,
-    [
-      join('node_modules', 'esbuild', 'bin', 'esbuild'),
-      'src/lib/pdf-provenance.ts',
-      '--bundle',
-      '--format=esm',
-      '--platform=neutral',
-      '--log-level=warning',
-      `--outfile=${outFile}`,
-    ],
-    { stdio: 'inherit' },
-  );
+  // esbuild's JS API, not its bin file: on Linux that file is the native binary (see consent.test.mjs).
+  buildSync({
+    entryPoints: ['src/lib/pdf-provenance.ts'],
+    bundle: true,
+    format: 'esm',
+    platform: 'neutral',
+    logLevel: 'warning',
+    outfile: outFile,
+  });
   ({ buildReportProvenance } = await import(pathToFileURL(outFile).href));
 });
 
@@ -133,21 +129,17 @@ describe('a real rendered PDF carries the mark', () => {
        }`,
     );
     const bundle = join(renderDir, 'render.mjs');
-    execFileSync(
-      process.execPath,
-      [
-        join('node_modules', 'esbuild', 'bin', 'esbuild'),
-        entry,
-        '--bundle',
-        '--format=esm',
-        '--platform=node',
-        '--packages=external',
-        '--jsx=automatic',
-        '--log-level=warning',
-        `--outfile=${bundle}`,
-      ],
-      { stdio: 'inherit', cwd: process.cwd() },
-    );
+    buildSync({
+      entryPoints: [entry],
+      bundle: true,
+      format: 'esm',
+      platform: 'node',
+      packages: 'external',
+      jsx: 'automatic',
+      logLevel: 'warning',
+      outfile: bundle,
+      absWorkingDir: process.cwd(),
+    });
     const { render } = await import(pathToFileURL(bundle).href);
     const pdf = await render(assisted);
     assert.equal(pdf.subarray(0, 5).toString('latin1'), '%PDF-');
