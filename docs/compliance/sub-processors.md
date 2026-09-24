@@ -1,7 +1,7 @@
 # Sub-processors
 
 **Controller:** [CONTROLLER LEGAL NAME]
-**Version:** 2026-09-10
+**Version:** 2026-09-24
 **Review trigger:** before any new third party receives personal data, and at least annually
 
 GDPR Art. 28(2) requires the controller's prior authorisation before a processor engages a
@@ -35,6 +35,19 @@ after switching it on would be disclosing it too late.
 the configured default. Changing it changes who receives inspection photographs, so it is a
 sub-processor change and requires this document and the privacy policy to be updated first, not
 afterwards.
+
+---
+
+## Third-party services without a processing agreement
+
+Two public services are reached directly from the browser or the app. Neither offers a GDPR Art. 28 data processing agreement, so they are **not** sub-processors in the legal sense — they are recipients acting under their own terms. They are listed because they receive personal data, and a list that omitted them would fail its own CSP check.
+
+| Service | What it is used for | Personal data it receives | Terms | Status |
+|---|---|---|---|---|
+| **OpenStreetMap Foundation** — Nominatim | Turns the GPS position captured with an inspection into a street address | **Precise coordinates** of the inspection and the requester's IP address | Public usage policy; no DPA. The Foundation is UK-based (EU adequacy decision for the UK renewed to Dec 2031); where the requests are served from has not been verified | Found missing 2026-09-24 (DEF-066). Must be replaced by a self-hosted or contracted geocoder under a DPA before production use at scale |
+| **Have I Been Pwned** — Pwned Passwords range API | Warns a user whose chosen password appears in known breaches | The requester's IP address and the first five characters of the password's SHA-1 hash — k-anonymity, so neither the password nor its full hash leaves the device | Public API; no DPA | Found missing 2026-09-24 |
+
+The privacy policy's recipient summary does not yet name either service. That is an open item on the [roadmap](../ROADMAP.md).
 
 ---
 

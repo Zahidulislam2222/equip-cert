@@ -129,7 +129,11 @@ scaling of a stateless process, which is standard but not measured here. Databas
    `supabase/auth-baseline.json`). Password resets stop working long before load does.
 4. **AI provider quota** — a per-account rate limit at the provider. `/api/analyze` limits per IP and
    per account so one user cannot spend it for everyone.
-5. **Origin CPU** — last, and cheapest to fix.
+5. **Reverse geocoding** — both clients turn inspection coordinates into an address through the
+   public OpenStreetMap Nominatim service, whose usage policy allows about one request per second
+   and no heavy use. Its URL is configuration; at scale it must point at a self-hosted or
+   contracted geocoder (DEF-066).
+6. **Origin CPU** — last, and cheapest to fix.
 
 ---
 
@@ -174,6 +178,7 @@ is: shard tenants across database projects (the schema is already tenant-keyed o
 `organization_id` everywhere, which is the prerequisite), move evidence photos to object storage
 with their own CDN, and replace per-dashboard Realtime sockets with a purpose-built fan-out.
 
-None of that is built. The codebase is shaped so it can be done without changing the
+None of that is built. The phased plan, with exit criteria for each tier, is
+[ROADMAP.md](ROADMAP.md) Phases 3–5. The codebase is shaped so it can be done without changing the
 authorization model — and anyone who presents a finished 1M-concurrent plan without having
 measured 10k is guessing. §2 is the first rung, and it is real.

@@ -59,15 +59,15 @@ A short map for reviewers, so a report can say which control failed:
 
 | Layer | Control | Where |
 |---|---|---|
-| Tenant isolation | Row-level security, `FORCE`d, on every table; cross-tenant e2e suite | `supabase/migrations/*_rls_policies.sql`, `e2e/rls-isolation.test.mjs` |
+| Tenant isolation | Row-level security enabled on all 11 tables and `FORCE`d on the 10 holding tenant data (`plan_limits` is a shared read-only price table); cross-tenant e2e suite | `supabase/migrations/*_rls_policies.sql`, `e2e/rls-isolation.test.mjs` |
 | Privilege escalation | Column-level trigger guards on role and tenant changes | `app.guard_profile_privileges()` |
 | Evidence integrity | Signed inspections immutable; erasure permitted only in one exact shape | `app.prevent_signed_inspection_change()` |
-| Accountability | Append-only audit log written by database triggers; clients cannot write it | `supabase/migrations/20260914000100_audit_log_writes.sql`, `e2e/audit-log.test.mjs` |
+| Accountability | Append-only audit log written by database triggers; clients cannot write it. **Built and e2e-tested locally; the migration is not yet applied to the hosted database**, where the earlier member-insert policy still applies | `supabase/migrations/20260914000100_audit_log_writes.sql`, `e2e/audit-log.test.mjs` |
 | API auth | Fail-closed JWT verification; per-account and per-IP rate limits, shared across replicas when configured | `api/analyze.ts`, `src/lib/rate-limit.ts` |
 | Secrets | One configuration boundary, enforced in CI; service-role key never reaches a client | `src/lib/config.ts`, `scripts/check-config-boundary.mjs` |
 | Transport and browser | HSTS, CSP, COOP, CORP, frame-ancestors none — one source for every target | `vercel.json`, `scripts/gen-deploy-artifacts.mjs` |
 | Runtime | Non-root, read-only filesystem, all capabilities dropped, request timeouts, bounded bodies | `deploy/Dockerfile`, `deploy/server.ts`, `deploy/k8s/` |
-| Supply chain | gitleaks, bandit, semgrep, dependency review, pinned base image digest | `.github/workflows/security.yml`, `.pre-commit-config.yaml` |
+| Supply chain | gitleaks, bandit, semgrep, Dependabot updates for npm and Actions, pinned base image digest | `.github/workflows/security.yml`, `.pre-commit-config.yaml`, `.github/dependabot.yml` |
 | Auth posture | Supabase Auth settings as code, drift-checked | `supabase/auth-baseline.json` |
 
 Known, recorded gaps — so they are not reported as discoveries — are listed under `known_gaps` in

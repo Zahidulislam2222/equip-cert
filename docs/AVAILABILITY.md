@@ -9,7 +9,8 @@ This document separates three things that are routinely blurred:
 | **Design target** | What the architecture is built to reach *on the named deployment tier*. Not a promise and not a measurement. |
 
 **No uptime figure is claimed for the current deployment.** It is a single container on a shared
-VPS with a free-tier database. The Terms of Service say the same thing: there is no SLA.
+VPS with a free-tier database. The Terms of Service say the same thing: there is no SLA. The
+steps that move each tier from *target* to *measured* are in [ROADMAP.md](ROADMAP.md).
 
 ---
 

@@ -73,7 +73,7 @@ lib/
                              equipment, settings
     theme/app_theme.dart     AppColors / AppMetrics / AppFonts / AppTheme
     widgets/                 Shared controls, signature pad, AI disclosure
-test/                        245 unit tests, described below
+test/                        423 unit + widget tests, described below
 ```
 
 ### Design system
@@ -106,15 +106,22 @@ device, because that image is printed evidence rather than UI.
 | `theme_tokens_test.dart` | Theme tokens against `../src/app/globals.css` |
 | `password_safety_test.dart` | k-anonymity breach check |
 | `slug_test.dart` | Organisation slug generation |
+| `ai_disclosure_widget_test.dart` | Art. 50(1) — the AI disclosure is on screen before the inspector can sign (widget test) |
+| `analyze_api_test.dart` | The boundary where an AI response becomes part of a safety record |
+| `checklist_repository_test.dart` | A checklist is never empty — a CMS failure falls back instead of offering nothing to answer |
+| `evidence_path_test.dart` | Uploaded photos and signatures land under the caller's own tenant path |
+| `secure_session_storage_test.dart` | The refresh token is kept in platform secure storage, never plain preferences |
+| `sync_service_test.dart` | When the offline queue drains — connectivity is treated as a hint, not proof |
 
-Three of these read files **outside** `mobile/`: the schema contract parses the migrations, the
-theme test parses the web stylesheet, and the capture test reads `ANALYZE_MAX_IMAGE_BYTES` out
-of `../.env.example`. That is deliberate — they are contract tests against the other client, and
+Five of these read files **outside** `mobile/`: the schema contract parses the migrations, the
+theme test parses the web stylesheet, the capture test reads `ANALYZE_MAX_IMAGE_BYTES` out
+of `../.env.example`, and the slug and evidence-path tests check their rules against the web and
+database sources. That is deliberate — they are contract tests against the other client, and
 a value with an owner should be read from its owner rather than copied. It is also why the CI
 job is not path-filtered to `mobile/**`.
 
-**Not covered:** the screens (no widget tests), `SyncService`, `ChecklistRepository`,
-`AnalyzeApi`.
+**423 tests, all passing** (`flutter test`, 2026-09-24). Screens beyond the AI disclosure are
+not widget-tested yet; the logic they call is.
 
 ---
 

@@ -27,8 +27,8 @@ late.
 | **Categories of data subject** | Technicians, managers, administrators |
 | **Categories of personal data** | Name, email address, role, qualifications, organisation membership, password hash, sign-in events |
 | **Legal basis** | Art. 6(1)(b) performance of a contract |
-| **Recipients** | Supabase (hosting, EU) |
-| **Third-country transfer** | None |
+| **Recipients** | Supabase (hosting, EU); at sign-up and password change the web client queries the Pwned Passwords range API (the user's IP address and the first five characters of the password's SHA-1 hash — no DPA; added 2026-09-24) |
+| **Third-country transfer** | None for stored data. The breached-password query reaches a third-party public API outside our control |
 | **Retention** | Life of the account, then deleted within 30 days of closure |
 | **Security measures** | §5 |
 
@@ -40,8 +40,8 @@ late.
 | **Categories of data subject** | The technician who performs the inspection; any person named in a record |
 | **Categories of personal data** | Technician name and qualifications, digital signature, GPS coordinates of the inspection, timestamps, photographs of equipment (which may incidentally show a person) |
 | **Legal basis** | Art. 6(1)(b); Art. 6(1)(c) where a record-keeping duty applies |
-| **Recipients** | The customer organisation's own managers and admins; Supabase; a regulator on lawful request |
-| **Third-country transfer** | None for the stored record |
+| **Recipients** | The customer organisation's own managers and admins; Supabase; OpenStreetMap Foundation (Nominatim) receives the GPS coordinates to return an address, under its public usage policy with no processing agreement — added 2026-09-24, DEF-066; a regulator on lawful request |
+| **Third-country transfer** | None for the stored record. The coordinate lookup goes to a UK-based service (EU adequacy decision for the UK, renewed to 2031); where requests are served from is not verified |
 | **Retention** | One year after the last entry, or the life of the extinguisher shell, whichever is shorter — 29 CFR 1910.157(e)(3). Longer only where a specific fire code or the customer's own retention instruction requires it |
 | **Security measures** | §5. Signed records are immutable: RLS forbids UPDATE and DELETE |
 
@@ -128,7 +128,9 @@ Not processed. The product is used by qualified technicians at work.
 - Service-role credentials never leave server handlers and are never `NEXT_PUBLIC_`
 - Secret scanning (gitleaks) and SAST (bandit, semgrep) on every commit
 
-- Append-only audit log of security- and compliance-relevant **changes** (inspections, corrective
+- *(Built and e2e-tested; migration `20260914000100` not yet applied to the hosted database as of
+  2026-09-24 — until it is, the measures in this bullet describe the target state.)*
+  Append-only audit log of security- and compliance-relevant **changes** (inspections, corrective
   actions, membership and roles, organisation plan and retention, equipment, privacy requests,
   consent), written by database triggers in the same transaction as the change. Entries hold the
   acting account, the subject account where relevant, and the changed column names, never names,

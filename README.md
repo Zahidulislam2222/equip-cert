@@ -4,18 +4,21 @@
 
 ### AI-Powered Equipment Safety Inspection & Compliance Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.1-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.3-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Flutter](https://img.shields.io/badge/Flutter-Android%20%2B%20iOS-02569B?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev/)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-635BFF?style=flat-square&logo=stripe&logoColor=white)](https://stripe.com/)
-[![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)](#license)
+[![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)](LICENSE)
+[![CI](https://github.com/Zahidulislam2222/equip-cert/actions/workflows/ci.yml/badge.svg)](https://github.com/Zahidulislam2222/equip-cert/actions/workflows/ci.yml)
 
 **Identify equipment with AI. Run safety checklists. Produce signed inspection records built around OSHA 29 CFR 1910.157 and NFPA 10. All from your phone.**
 
-[Built to scale](#built-to-scale) &nbsp;&middot;&nbsp; [Architecture](#architecture) &nbsp;&middot;&nbsp; [Security](SECURITY.md) &nbsp;&middot;&nbsp; [Getting Started](#getting-started)
+**[Live site](https://equipcert.zahidul-islam.com)**¹ &nbsp;&middot;&nbsp; [Documentation](docs/README.md) &nbsp;&middot;&nbsp; [Roadmap](docs/ROADMAP.md) &nbsp;&middot;&nbsp; [Built to scale](#built-to-scale) &nbsp;&middot;&nbsp; [Legal map](docs/compliance/README.md) &nbsp;&middot;&nbsp; [Security](docs/SECURITY-MODEL.md) &nbsp;&middot;&nbsp; [Getting Started](#getting-started)
+
+¹ *Status 2026-09-24: the site is up, but the hosted database it is built against is offline, so sign-in does not work until it is restored. See [ROADMAP.md](docs/ROADMAP.md) Phase 1.*
 
 ---
 
@@ -48,7 +51,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **AI Equipment ID** | Point camera at equipment — AI identifies type, serial number, and visible safety issues |
 | **Smart Checklists** | Dynamic questions loaded from CMS based on equipment type |
 | **GPS Evidence** | Automatic location capture proving the technician was on-site |
-| **Digital Signatures** | ESIGN Act-compliant electronic signatures with full audit trail |
+| **Digital Signatures** | Built to the ESIGN / UETA elements: consent to sign electronically (an explicit control on web; a notice on mobile, control planned), attribution to the signed-in user, immutable record |
 | **Offline Mode** | Complete inspections without connectivity — auto-syncs when back online |
 | **Photo Evidence** | Capture and attach photographic evidence to any inspection |
 
@@ -70,7 +73,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 |---------|-------------|
 | **Multi-AI Provider** | Swap between Gemini, OpenAI, or Claude via environment variable — zero code changes |
 | **Multi-Tenant** | Organization-scoped data isolation with Row Level Security |
-| **Industrial Dark Theme** | Dark-first design with ANSI safety colors + Framer Motion animations across all pages. Light mode toggle available |
+| **Dark-first design** | Warm near-black surfaces, one Safety Yellow accent, Archivo + Inter; semantic colour pairs contrast-tested against WCAG. Light mode available |
 | **Mobile App** | Native Flutter client for Android and iOS (`mobile/`), sharing the backend, schema and compliance contracts |
 | **Plan Tiers** | Free / Pro / Enterprise limits enforced by a database trigger. Stripe checkout is integrated but not configured |
 
@@ -98,6 +101,7 @@ on a free-tier database and claims none of the large numbers.
 
 - **[docs/SCALING.md](docs/SCALING.md)** — the capacity model for 10k / 100k / 1M concurrent, the arithmetic, the order things break in, and the cost ladder.
 - **[docs/AVAILABILITY.md](docs/AVAILABILITY.md)** — SLOs per tier (99.9 % / 99.95 %), error budgets, failure modes, RPO/RTO and runbooks.
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — the phases from today to 1M+ concurrent users, each ending in a measured exit criterion rather than a date.
 
 ---
 
@@ -126,14 +130,18 @@ on a free-tier database and claims none of the large numbers.
  │  Serverless  │  │                  │
  │              │  │  Auth            │
  │  /api/analyze│  │  PostgreSQL + RLS│
- │  /api/stripe │  │  Storage         │
- │              │  │  Realtime        │
+ │  /api/dsar   │  │  Storage         │
+ │  /api/       │  │  Realtime        │
+ │  webhooks/   │  │                  │
+ │  stripe      │  │                  │
  │  AI Provider │  │                  │
- │  Abstraction │  │  8 tables        │
+ │  Abstraction │  │  11 tables       │
  └──────────────┘  └──────────────────┘
 ```
 
-> **Key constraint:** `output: "export"` in Next.js config — a static site the edge can cache. This means no middleware, no server components, no API routes in the app directory. All auth is client-side. API endpoints are standalone Vercel serverless functions.
+> **Key constraint:** `output: "export"` in Next.js config — a static site the edge can cache. This means no middleware, no server components, no API routes in the app directory. All auth is client-side and the database enforces authorization. API endpoints are standalone serverless handlers that run on Vercel or behind the self-host adapter.
+>
+> The component map, data flows and the reasoning behind each decision are in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ---
 
@@ -143,19 +151,20 @@ on a free-tier database and claims none of the large numbers.
 |-------|-----------|-----|
 | Framework | **Next.js 16** + React 19 | Static export + file-based routing |
 | Language | **TypeScript 5** | Type safety across the entire codebase |
-| Styling | **Tailwind CSS 3.4** | Utility-first with custom "Industrial Dark" design system — ANSI safety colors, blueprint grids |
-| UI | **Radix UI** + CVA | Accessible, composable components |
+| Styling | **Tailwind CSS 3.4** | Design tokens owned by `src/app/globals.css` — dark-first, Safety Yellow accent |
+| UI | **Radix Slot** + CVA | Composable component variants |
 | Auth | **Supabase Auth** | Email, magic link, OAuth — with RLS for data isolation |
-| Database | **Supabase PostgreSQL** | 8 tables, Row Level Security, realtime subscriptions |
+| Database | **Supabase PostgreSQL** (EU) | 11 tables, Row Level Security, triggers, realtime subscriptions |
 | AI | **Gemini / OpenAI / Claude** | Abstracted provider — swap via env var |
-| Payments | **Stripe** | Subscriptions, webhooks, customer portal |
+| Payments | **Stripe** | Checkout and webhooks built; not configured yet |
 | Mobile | **Flutter** | Native Android + iOS client with camera, GPS and offline queue |
 | CMS | **Contentful** | Dynamic equipment checklists managed by non-developers |
 | PDF | **react-pdf/renderer** | Server-quality inspection reports in the browser |
 | Offline | **IndexedDB** | Queue submissions offline, auto-sync on reconnect |
 | Animations | **Framer Motion 12** | 9 motion primitives: scroll reveals, staggered grids, spring physics, parallax, kinetic text, AnimatePresence transitions |
 | Toasts | **Sonner** | Non-intrusive notifications |
-| Charts | **Recharts** | Dashboard analytics (ready for Phase 3 expansion) |
+| Charts | **Recharts** | Dashboard analytics |
+| 3D / film | **Three.js** + Blender | Landing hero: a rendered inspection film and an interactive model, with a text-first fallback |
 
 ---
 
@@ -168,10 +177,13 @@ organizations ─┬── profiles (role-based: admin / manager / technician)
                │   └── corrective_actions (severity, assignment, resolution)
                ├── schedules (recurring per equipment)
                ├── notifications (realtime via Supabase)
-               └── audit_log (append-only, written by database triggers)
+               ├── consent_records (what was agreed to, against which policy version)
+               ├── data_subject_requests (privacy requests with statutory deadlines)
+               └── audit_log (append-only; trigger-written once the latest migration is applied to the hosted database)
+plan_limits (generated from src/lib/plans.ts)
 ```
 
-All tables enforce **Row Level Security** — users only see data from their organization. Signed inspection records are **immutable** (database trigger prevents modification after signature).
+**Row Level Security** is enabled on all 11 tables and forced on the 10 holding tenant data — users only see data from their organization. Signed inspection records are **immutable** (database trigger prevents modification after signature).
 
 ---
 
@@ -185,6 +197,8 @@ All tables enforce **Row Level Security** — users only see data from their org
 | **US state privacy (CCPA/CPRA and others)** | Consent with equal-prominence reject, Global Privacy Control honoured, rights request intake |
 | **EU AI Act Art. 50** | AI-derived results disclosed before signing; provenance stamped server-side; PDF reports marked machine-readably ([classification memo](docs/compliance/ai-act-classification.md)) |
 
+The full map — including the Cyber Resilience Act, NIS2, the ADA and the European Accessibility Act, with what applies, what is done and what is open — is in **[docs/compliance/README.md](docs/compliance/README.md)**.
+
 Not claimed: SOC 2 or any other certification, and legal review — the policies contain
 placeholders for the operator's legal identity and have not been reviewed by counsel.
 
@@ -194,16 +208,18 @@ placeholders for the operator's legal identity and have not been reviewed by cou
 |-----------|---------------|
 | **API Authentication** | JWT verification on `/api/analyze` — unauthenticated requests rejected |
 | **Input Validation** | Zod schema on all API inputs — type, size, and format enforced |
-| **Rate Limiting** | Per IP and per account on the AI and privacy-request endpoints, shared across replicas when a store is configured |
-| **RLS (Row Level Security)** | Every table scoped to organization and FORCEd; cross-tenant isolation proven by an e2e suite |
-| **Audit Log** | Changes to inspections, roles, plans, equipment and privacy requests written by triggers; clients cannot write or edit it |
+| **Rate Limiting** | Per IP and per account on the AI endpoint, per IP on the privacy-request endpoint, shared across replicas when a store is configured |
+| **RLS (Row Level Security)** | Every tenant table scoped to organization and FORCEd; cross-tenant isolation proven by an e2e suite |
+| **Audit Log** | Changes to inspections, roles, plans, equipment and privacy requests written by triggers; clients cannot write or edit it — built and e2e-tested, not yet applied to the hosted database |
 | **Server Hardening** | Header/request/keep-alive timeouts, bounded bodies, graceful drain, non-root read-only container |
 | **Feature Gating (DB-level)** | PostgreSQL trigger enforces free plan limits — cannot bypass via DevTools |
 | **Immutable Records** | Signed inspections cannot be UPDATE'd or DELETE'd (trigger) |
 | **Security Headers** | CSP, HSTS, COOP, CORP, frame-ancestors none — one source for Vercel and self-host. Vulnerability reporting: [SECURITY.md](SECURITY.md) |
 | **Open Redirect Prevention** | Notification URLs validated (`startsWith('/')` only) |
 | **Offline Integrity** | SHA-256 hash on queued submissions — tampered data rejected on sync |
-| **Secret Protection** | `.env*`, `*.key`, `*.keystore`, `.claude/` all gitignored |
+| **Secret Protection** | One configuration owner enforced by the build; `.env*`, keys and keystores gitignored; gitleaks before commit and in CI |
+
+Threat model, trust boundaries and known gaps: **[docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md)**. Accessibility: **[docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md)**.
 
 ---
 
@@ -289,7 +305,7 @@ equip-cert/
 ├── deploy/                       # Self-host server, Dockerfile, config, generated k8s manifests
 ├── load/k6/                      # Capacity plan with SLO thresholds
 ├── e2e/ · unit/                  # Database authorization suite · unit tests
-└── docs/                         # SCALING, AVAILABILITY, compliance records
+└── docs/                         # Architecture, scaling, availability, roadmap, security, accessibility, compliance
 ```
 
 ---
@@ -329,12 +345,14 @@ CI builds and verifies the Flutter Android release and compiles iOS on macOS. Se
 
 ## Competitors & Positioning
 
-| Competitor | Price | EquipCert Advantage |
-|-----------|-------|-------------------|
-| SafetyCulture | $24-29/user/mo | AI equipment identification, multi-provider AI, lower entry price |
-| Field1st | Custom | Open architecture, not locked to one AI vendor |
-| GoAudits | Custom | Full offline mode with auto-sync, GPS evidence |
-| SmartQHSE | Custom | Simpler UX, faster onboarding, mobile-first |
+| Competitor | EquipCert AI's intended difference |
+|-----------|-------------------|
+| SafetyCulture | AI equipment identification, multi-provider AI |
+| Field1st | Open architecture, not locked to one AI vendor |
+| GoAudits | Full offline mode with auto-sync, GPS evidence |
+| SmartQHSE | Simpler UX, faster onboarding, mobile-first |
+
+Competitor pricing changes often and is deliberately not quoted here; check each vendor's site.
 
 **Our differentiator:** AI-powered equipment identification + multi-provider AI abstraction + compliance built into the data model (OSHA/NFPA record-keeping, e-signature, GDPR and US state privacy, EU AI Act disclosure) — in a mobile-first platform that works offline.
 
@@ -355,15 +373,31 @@ npm run test:production  # Check a deployment: health, readiness, headers, compi
 
 ---
 
+## Documentation
+
+| Document | Covers |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | Components, data model, flows, decisions and why |
+| [Scaling](docs/SCALING.md) | 10k / 100k / 1M concurrent — the arithmetic and the ladder |
+| [Availability](docs/AVAILABILITY.md) | Uptime targets, error budgets, failure modes, runbooks |
+| [Roadmap](docs/ROADMAP.md) | From today to 1M+ users, with exit criteria |
+| [Security model](docs/SECURITY-MODEL.md) | Threats, controls, known gaps |
+| [Legal map](docs/compliance/README.md) | US and EU law — what applies and what is done |
+| [Accessibility](docs/ACCESSIBILITY.md) | WCAG 2.1 AA target and status |
+| [Mobile client](mobile/README.md) | Flutter Android + iOS |
+| [Changelog](CHANGELOG.md) | What changed, and when |
+
+---
+
 ## Contributing
 
-This is a proprietary project. For inquiries about partnerships or enterprise licensing, please reach out.
+Issues are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and the gates every change passes. Security reports go through [SECURITY.md](SECURITY.md), never a public issue.
 
 ---
 
 ## License
 
-Proprietary. All rights reserved.
+Proprietary, source published for review — see [LICENSE](LICENSE).
 
 ---
 
