@@ -1,35 +1,34 @@
 name: Supabase Keep Alive
 
-# A Supabase free project is PAUSED after one week without traffic, and a paused project
-# loses its DNS record — which is why the previous version of this file mattered so much and
-# why its failure was so expensive.
+# A Supabase free project is PAUSED when it "does not receive sufficient user database activity
+# over the past week" (supabase.com/docs/guides/platform/free-project-pausing), and a paused
+# project loses its DNS record. This workflow has failed at that job twice.
 #
-# The old workflow was:
+# Version 1 (DEF-001, DEF-007):
 #
 #   curl -s -o /dev/null -w "%{http_code}" "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/" ...
 #
-# Three faults, all of which had to line up, and all of which did (DEF-001, DEF-007):
+#   The secrets were unset, so GitHub substituted empty strings and the URL became "/rest/v1/";
+#   curl's exit status and the status code were never checked. A daily green tick on a job that
+#   made no request.
 #
-#   1. GitHub substitutes an EMPTY STRING for an unset secret, and the secrets were unset.
-#      The URL therefore became "/rest/v1/".
-#   2. `-s -o /dev/null -w` prints a status code and discards everything else.
-#   3. curl's exit status was never checked and the status code was never compared to
-#      anything, so the step passed regardless.
+# Version 2 (DEF-069) fixed all of that and pinged GET /auth/v1/health twice a week, asserting
+# HTTP 200 and a GoTrue body. Every assertion was correct and the job was green on 2026-09-14
+# and 2026-09-17 — but GoTrue answers that endpoint WITHOUT querying Postgres, so none of it was
+# database activity. By 2026-09-21 the project had paused and its host no longer resolved.
 #
-# The result was a daily green tick on a job that made no request, while the project it
-# existed to keep awake went to sleep and its DNS record disappeared. The keepalive did not
-# fail to prevent the outage; the keepalive CAUSED the outage to go unnoticed.
-#
-# This version asserts the secret exists, asserts the response is a real Supabase response,
-# and fails loudly otherwise.
+# Version 3 (this one) reads one row of `plan_limits` through PostgREST, which can only answer
+# by running a SELECT, and judges success on the body (see scripts/supabase-keepalive.mjs).
+# It runs daily, because the docs describe "a few user requests to the database each day".
 
 on:
   schedule:
-    # Twice weekly, comfortably inside the one-week pause window even if one run is skipped.
-    # GitHub disables scheduled workflows on repositories with no activity for 60 days, so
-    # this is a reminder rather than a guarantee — see the note in the final step.
-    - cron: '0 6 * * 1,4'
+    # Daily. GitHub disables scheduled workflows on repositories with no activity for 60 days,
+    # so this is a reminder rather than a guarantee — see the note in the final step.
+    - cron: '0 6 * * *'
   workflow_dispatch:
+  # Never add pull_request: this job holds the service-role key, and a PR trigger would put it
+  # within reach of workflow code that has not been reviewed.
 
 permissions:
   contents: read
@@ -38,50 +37,27 @@ jobs:
   ping:
     name: Keep the project awake
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Verify the secrets exist
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "::error title=Keepalive is inert::NEXT_PUBLIC_SUPABASE_URL or"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. This job would send a request to"
-            echo "nowhere and report success, which is exactly what caused DEF-007."
-            exit 1
-          fi
+      - uses: actions/checkout@v7
 
-      - name: Ping the auth endpoint
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # No dependencies to install: the script uses only Node built-ins.
+      - name: Query the database
         env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        # Belt and braces: the script exits 0 only after a verified row, and the step ALSO
+        # requires the success line — so a script that exits 0 without querying (the first
+        # review found one path that did) still fails here.
+        shell: bash
         run: |
           set -euo pipefail
-          # --fail-with-body makes curl exit non-zero on a 4xx/5xx while still showing why.
-          # The auth health endpoint is used because it answers 200 for any valid key,
-          # whereas /rest/v1/ deliberately requires a secret key and answers 401.
-          status=$(curl -sS --max-time 20 -o /tmp/body -w '%{http_code}' \
-            "${SUPABASE_URL%/}/auth/v1/health" \
-            -H "apikey: ${SUPABASE_ANON_KEY}")
-
-          echo "HTTP ${status}"
-          cat /tmp/body
-
-          if [ "$status" != "200" ]; then
-            echo "::error title=Supabase is not answering::Expected HTTP 200 from the auth"
-            echo "health endpoint, got ${status}. The project may be paused, deleted, or the"
-            echo "anon key may have been rotated."
-            exit 1
-          fi
-
-          # A 200 from something that is not GoTrue would mean the URL points somewhere else.
-          if ! grep -q '"name":"GoTrue"' /tmp/body; then
-            echo "::error title=Unexpected response::The endpoint answered 200 but does not"
-            echo "look like Supabase Auth. Check NEXT_PUBLIC_SUPABASE_URL."
-            exit 1
-          fi
-
-          echo "Supabase auth is awake and answering."
+          node scripts/supabase-keepalive.mjs | tee "$RUNNER_TEMP/keepalive.out"
+          grep -q '^Database answered:' "$RUNNER_TEMP/keepalive.out"
 
       - name: Note the residual risk
         run: |
