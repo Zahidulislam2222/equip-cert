@@ -12,7 +12,10 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    # PAUSED 2026-09-28 at the owner's request (no email while the backend is down; DEF-070).
+    # 0 = version updates temporarily disabled; security updates are not affected by this limit.
+    # Restore to 5 to resume.
+    open-pull-requests-limit: 0
     # Security updates always come through individually and are never grouped, regardless of
     # what is written here — grouping only affects routine version bumps, which are far easier
     # to review as one PR than as fifteen.
@@ -45,4 +48,5 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    open-pull-requests-limit: 3
+    # PAUSED 2026-09-28 (see npm above). Restore to 3 to resume.
+    open-pull-requests-limit: 0
