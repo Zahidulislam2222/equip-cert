@@ -21,12 +21,11 @@
 
 import { exec } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { ROOT, supabaseProjectRef } from './lib/ops-env.mjs';
 
 const run = promisify(exec);
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TARGET = join(ROOT, 'src', 'lib', 'database.types.ts');
 
 let generated;
@@ -34,16 +33,12 @@ try {
   // `--linked` reads supabase/.temp/project-ref, which is gitignored and therefore absent on
   // a CI runner. SUPABASE_PROJECT_REF targets the project explicitly instead, so the gate
   // works both locally (linked) and in Actions (ref + access token) without a link step.
-  const ref = process.env.SUPABASE_PROJECT_REF;
-  const target = ref ? `--project-id ${ref}` : '--linked';
-
+  //
   // `exec` rather than `execFile`: on Windows `npx` is a .cmd shim, and since Node 20.12 the
   // runtime refuses to spawn one directly (EINVAL). exec goes through a shell, and the only
-  // interpolated value is validated below, so there is nothing to inject.
-  if (ref && !/^[a-z]{20}$/.test(ref)) {
-    console.error(`✗ SUPABASE_PROJECT_REF is not a valid project ref: ${ref}`);
-    process.exit(1);
-  }
+  // interpolated value is validated by supabaseProjectRef(), so there is nothing to inject.
+  const ref = supabaseProjectRef();
+  const target = ref ? `--project-id ${ref}` : '--linked';
 
   const { stdout } = await run(
     `npx --silent supabase gen types typescript ${target}`,

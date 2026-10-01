@@ -29,29 +29,17 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { ROOT, env, loadEnvLocal } from './lib/ops-env.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-for (const line of safeRead(join(ROOT, '.env.local')).split(/\r?\n/)) {
-  const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-  if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].trim().replace(/^(['"])(.*)\1$/, '$2');
-}
-function safeRead(path) {
-  try {
-    return readFileSync(path, 'utf8');
-  } catch {
-    return '';
-  }
-}
+loadEnvLocal();
 
 const deployCfg = JSON.parse(readFileSync(join(ROOT, 'deploy/deploy.config.json'), 'utf8'));
 const vercelCfg = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));
 
-const BASE = (process.env.PRODUCTION_URL || `https://${deployCfg.hostname}`).replace(/\/+$/, '');
-const INTENDED_SUPABASE = hostOf(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const BASE = (env('PRODUCTION_URL') ?? `https://${deployCfg.hostname}`).replace(/\/+$/, '');
+const INTENDED_SUPABASE = hostOf(env('NEXT_PUBLIC_SUPABASE_URL'));
 const TIMEOUT_MS = 10_000;
 const RETRIES = 2;
 // Enough to cover every chunk a Next.js export references from its landing page, bounded so a

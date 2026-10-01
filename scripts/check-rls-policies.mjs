@@ -32,46 +32,25 @@
  * runs SELECTs against catalog views and writes nothing.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  SUPABASE_MANAGEMENT_API as MANAGEMENT_API,
+  exitWith,
+  loadEnvLocal,
+  requireEnv,
+  supabaseProjectRef,
+} from './lib/ops-env.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const MANAGEMENT_API = 'https://api.supabase.com';
+// Same .env.local loading as the e2e suite, so a developer runs one command and it works.
+// CI supplies the same names as secrets.
+loadEnvLocal();
 
-// Load .env.local the same way the e2e suite does, so a developer runs one command and it
-// works. CI supplies the same names as secrets.
-const envPath = join(ROOT, '.env.local');
-if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
-    if (m && process.env[m[1]] === undefined) {
-      process.env[m[1]] = m[2].trim().replace(/^(['"])(.*)\1$/, '$2');
-    }
-  }
-}
-
-function required(name) {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`✗ ${name} is not set.`);
-    console.error('  This gate reads live database state and cannot be faked offline.');
-    process.exit(1);
-  }
-  return value;
-}
-
-const TOKEN = required('SUPABASE_ACCESS_TOKEN');
+const TOKEN = requireEnv(
+  'SUPABASE_ACCESS_TOKEN',
+  'This gate reads live database state and cannot be faked offline.'
+);
 const REF =
-  process.env.SUPABASE_PROJECT_REF ||
-  (existsSync(join(ROOT, 'supabase/.temp/project-ref'))
-    ? readFileSync(join(ROOT, 'supabase/.temp/project-ref'), 'utf8').trim()
-    : null);
-
-if (!REF) {
-  console.error('✗ No project ref. Set SUPABASE_PROJECT_REF or run `supabase link`.');
-  process.exit(1);
-}
+  supabaseProjectRef({ fromLinkFile: true }) ??
+  exitWith('No project ref. Set SUPABASE_PROJECT_REF or run `supabase link`.');
 
 async function query(sql) {
   const res = await fetch(`${MANAGEMENT_API}/v1/projects/${REF}/database/query`, {

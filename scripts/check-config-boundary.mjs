@@ -12,8 +12,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, posix, sep } from 'node:path';
 
-const SCAN_ROOTS = ['src', 'api', 'deploy', 'mobile/lib', 'mobile/test'];
-const SCAN_EXTENSIONS = ['.ts', '.tsx', '.dart'];
+const SCAN_ROOTS = ['src', 'api', 'deploy', 'mobile/lib', 'mobile/test', 'scripts', 'e2e'];
+const SCAN_EXTENSIONS = ['.ts', '.tsx', '.dart', '.mjs'];
 const SKIP_DIRS = new Set([
   'node_modules',
   '.next',
@@ -30,9 +30,16 @@ const CONFIG_MODULE = 'src/lib/config.ts';
 const PLANS_MODULE = 'src/lib/plans.ts';
 
 /**
+ * The operational scripts and live e2e suites run under plain `node`, never through Next.js,
+ * so they cannot import CONFIG_MODULE. They get one owner of their own instead of six copies
+ * of a `.env.local` loader — which is what they had until 2026-10-01.
+ */
+const OPS_ENV_MODULE = 'scripts/lib/ops-env.mjs';
+
+/**
  * The Flutter client is a second runtime with the same rule and its own owner file.
  *
- * Dart has no `process.env` at runtime on a mobile device — a release build has no shell to
+ * Dart has no Node-style environment object at runtime on a mobile device — a release build has no shell to
  * inherit one from. Its equivalent is `String.fromEnvironment`, resolved at COMPILE time from
  * `--dart-define`, which makes it exactly as baked-in as `NEXT_PUBLIC_*` and exactly as much
  * of a boundary. `dart_define.example.json` is the Dart `.env.example`: names and safe
@@ -43,14 +50,44 @@ const DART_DEFINE_EXAMPLE = 'mobile/dart_define.example.json';
 
 const TS = ['.ts', '.tsx'];
 const DART = ['.dart'];
+const NODE_SCRIPTS = ['.mjs'];
+
+/**
+ * Every way found to reach the environment: dot access, optional chaining, bracket access,
+ * destructuring the env member off the process object, and importing the process module (with
+ * or without the node: prefix). The first version matched only a literal dot form and let bracket
+ * access through; two reviews on 2026-10-01 found the rest by planting each one.
+ *
+ * Built from a token so this file never spells what it forbids and needs no exemption from its
+ * own rule.
+ */
+const P = ['pro', 'cess'].join('');
+const ENV_ACCESS = new RegExp(
+  [
+    String.raw`\b${P}\s*\??\.\s*env\b`,
+    String.raw`\b${P}\s*(?:\?\.)?\s*\[\s*['"\x60]env['"\x60]\s*\]`,
+    String.raw`['"](?:node:)?${P}['"]`,
+    String.raw`\{[^}]*\benv\b[^}]*\}\s*=\s*(?:globalThis\.)?${P}\b`,
+  ].join('|')
+);
+
+/** Spelled out for the same reason. */
+const ENV_NAME = [P, 'env'].join('.');
 
 const RULES = [
   {
     id: 'env-access-outside-config',
-    description: `process.env may only be read in ${CONFIG_MODULE}`,
-    pattern: /process\.env\./,
+    description: `${ENV_NAME} may only be read in ${CONFIG_MODULE}`,
+    pattern: ENV_ACCESS,
     appliesTo: TS,
     allow: [CONFIG_MODULE],
+  },
+  {
+    id: 'ops-env-access-outside-owner',
+    description: `operational scripts and e2e suites may read ${ENV_NAME} only in ${OPS_ENV_MODULE}`,
+    pattern: ENV_ACCESS,
+    appliesTo: NODE_SCRIPTS,
+    allow: [OPS_ENV_MODULE],
   },
   {
     id: 'dart-env-access-outside-config',
@@ -70,13 +107,13 @@ const RULES = [
   },
   {
     id: 'hardcoded-provider-endpoint',
-    description: `provider/API base URLs must come from ${CONFIG_MODULE} / ${DART_CONFIG_MODULE}`,
+    description: `provider/API base URLs must come from ${CONFIG_MODULE} / ${DART_CONFIG_MODULE} / ${OPS_ENV_MODULE}`,
     // `api.pwnedpasswords.com` is in this list because the Flutter client performs the same
     // k-anonymity breach lookup as src/lib/password-safety.ts. Two runtimes hardcoding the
     // same third-party endpoint is precisely the drift this rule exists to prevent.
     pattern:
-      /['"`]https:\/\/(?:api\.anthropic\.com|api\.openai\.com|generativelanguage\.googleapis\.com|nominatim\.openstreetmap\.org|api\.pwnedpasswords\.com|[a-z0-9-]+\.supabase\.co)/,
-    allow: [CONFIG_MODULE, DART_CONFIG_MODULE],
+      /['"`]https:\/\/(?:api\.anthropic\.com|api\.openai\.com|generativelanguage\.googleapis\.com|nominatim\.openstreetmap\.org|api\.pwnedpasswords\.com|cdn\.contentful\.com|[a-z0-9-]+\.supabase\.co)/,
+    allow: [CONFIG_MODULE, DART_CONFIG_MODULE, OPS_ENV_MODULE],
   },
   {
     id: 'hardcoded-api-version',
@@ -107,6 +144,9 @@ const RULES = [
     id: 'secret-shaped-literal',
     description: 'secret-shaped literal committed to source',
     // Live/real credential shapes. Test-mode and placeholder forms are excluded on purpose.
+    // Scanned WITH comments: a secret pasted into a doc comment is still a committed secret, and
+    // this repository is public.
+    scanComments: true,
     pattern:
       /(?:sk_live_[A-Za-z0-9]{8,}|rk_live_[A-Za-z0-9]{8,}|whsec_[A-Za-z0-9]{16,}|AIza[A-Za-z0-9_-]{30,}|sk-ant-[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.)/,
     allow: [],
@@ -115,11 +155,13 @@ const RULES = [
 
 /**
  * Strip comments so an explanatory comment cannot trip a rule.
- * The negative lookbehind on `:` is load-bearing — without it `https://` is read as the
- * start of a line comment and every hardcoded URL becomes invisible to the scanner.
+ *
+ * A `//` counts only at the start of a line or after whitespace or a closing token, so
+ * `https://` survives. The first version used a negative lookbehind on `:` alone, and any other
+ * `//` inside a string (`'a//b'`) swallowed the rest of the line, code included.
  */
 function stripComments(line) {
-  return line.replace(/\/\*.*?\*\//g, '').replace(/(?<!:)\/\/.*$/, '');
+  return line.replace(/\/\*.*?\*\//g, '').replace(/(?<=^|[\s;,)}\]])\/\/.*$/, '');
 }
 
 function walk(dir, out = []) {
@@ -156,7 +198,7 @@ for (const file of files) {
     if (rule.allow.includes(relative)) continue;
 
     lines.forEach((raw, index) => {
-      const line = stripComments(raw);
+      const line = rule.scanComments ? raw : stripComments(raw);
       if (rule.pattern.test(line)) {
         violations.push({
           file: relative,

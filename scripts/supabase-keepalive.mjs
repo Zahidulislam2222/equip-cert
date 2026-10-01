@@ -34,6 +34,7 @@
 
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { processEnv } from './lib/ops-env.mjs';
 
 // The query is the contract with the schema, not a tunable: one seeded reference table.
 export const KEEPALIVE_PATH = '/rest/v1/plan_limits?select=plan_id&limit=1';
@@ -117,7 +118,7 @@ function fail(title, message) {
   process.exitCode = 1;
 }
 
-export async function main(env = process.env) {
+export async function main(env = processEnv()) {
   const key = (env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
   if (!(env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim() || !key) {
     fail(

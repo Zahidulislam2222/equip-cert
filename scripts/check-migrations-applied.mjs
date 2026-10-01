@@ -33,20 +33,14 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ROOT, supabaseProjectRef } from './lib/ops-env.mjs';
 
 const run = promisify(exec);
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Validated before interpolation for the same reason as in check-generated-types.mjs: `exec`
-// goes through a shell because `npx` is a .cmd shim on Windows, so the only value that reaches
-// the command line must be provably a project ref and nothing else.
-const ref = process.env.SUPABASE_PROJECT_REF;
-if (ref && !/^[a-z]{20}$/.test(ref)) {
-  console.error(`✗ SUPABASE_PROJECT_REF is not a valid project ref: ${ref}`);
-  process.exit(1);
-}
+// supabaseProjectRef() validates the ref before it is interpolated: `exec` goes through a
+// shell because `npx` is a .cmd shim on Windows, so the only value that reaches the command
+// line must be provably a project ref and nothing else.
+const ref = supabaseProjectRef();
 const target = ref ? `--linked --project-ref ${ref}` : '--linked';
 const FORMAT = '--output-format json --agent no';
 

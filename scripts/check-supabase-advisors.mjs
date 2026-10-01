@@ -28,11 +28,9 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ROOT, supabaseProjectRef } from './lib/ops-env.mjs';
 
 const run = promisify(exec);
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Accepted findings, per advisor type. Anything not listed here fails the gate.
@@ -62,14 +60,10 @@ if (!Object.hasOwn(ACCEPTED, type)) {
   process.exit(1);
 }
 
-// Validated before interpolation for the same reason as in check-migrations-applied.mjs:
-// `exec` goes through a shell because `npx` is a .cmd shim on Windows, so the only value that
-// reaches the command line must be provably a project ref and nothing else.
-const ref = process.env.SUPABASE_PROJECT_REF;
-if (ref && !/^[a-z]{20}$/.test(ref)) {
-  console.error(`✗ SUPABASE_PROJECT_REF is not a valid project ref: ${ref}`);
-  process.exit(1);
-}
+// supabaseProjectRef() validates the ref before it is interpolated: `exec` goes through a
+// shell because `npx` is a .cmd shim on Windows, so the only value that reaches the command
+// line must be provably a project ref and nothing else.
+const ref = supabaseProjectRef();
 
 // No `supabase link` — see DEF-053. `--linked --project-ref <ref>` needs no link file, and the
 // two flags are mutually exclusive only when `--linked` is omitted.

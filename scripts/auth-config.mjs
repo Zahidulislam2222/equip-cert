@@ -21,43 +21,30 @@
  * Read path needs SUPABASE_ACCESS_TOKEN with project read; --apply needs write.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  ROOT,
+  SUPABASE_MANAGEMENT_API as MANAGEMENT_API,
+  exitWith,
+  loadEnvLocal,
+  requireEnv,
+  supabaseProjectRef,
+} from './lib/ops-env.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const MANAGEMENT_API = 'https://api.supabase.com';
 const APPLY = process.argv.includes('--apply');
 
-// Same .env.local loader the other live gates use, so one command works for a developer and
+// Same .env.local loading as the other live gates, so one command works for a developer and
 // the identical variable names work as CI secrets.
-const envPath = join(ROOT, '.env.local');
-if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
-    if (m && process.env[m[1]] === undefined) {
-      process.env[m[1]] = m[2].trim().replace(/^(['"])(.*)\1$/, '$2');
-    }
-  }
-}
+loadEnvLocal();
 
-const TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
-if (!TOKEN) {
-  console.error('✗ SUPABASE_ACCESS_TOKEN is not set.');
-  console.error('  This gate reads live project state and cannot be satisfied offline.');
-  process.exit(1);
-}
-
+const TOKEN = requireEnv(
+  'SUPABASE_ACCESS_TOKEN',
+  'This gate reads live project state and cannot be satisfied offline.'
+);
 const REF =
-  process.env.SUPABASE_PROJECT_REF ||
-  (existsSync(join(ROOT, 'supabase/.temp/project-ref'))
-    ? readFileSync(join(ROOT, 'supabase/.temp/project-ref'), 'utf8').trim()
-    : null);
-
-if (!REF) {
-  console.error('✗ No project ref. Set SUPABASE_PROJECT_REF or run `supabase link`.');
-  process.exit(1);
-}
+  supabaseProjectRef({ fromLinkFile: true }) ??
+  exitWith('No project ref. Set SUPABASE_PROJECT_REF or run `supabase link`.');
 
 const baseline = JSON.parse(readFileSync(join(ROOT, 'supabase/auth-baseline.json'), 'utf8'));
 

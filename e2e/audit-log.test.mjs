@@ -26,37 +26,14 @@
 
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
+import { loadEnvLocal, requireEnv } from '../scripts/lib/ops-env.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+loadEnvLocal();
 
-for (const line of safeRead(join(ROOT, '.env.local')).split(/\r?\n/)) {
-  const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-  if (m && process.env[m[1]] === undefined) {
-    process.env[m[1]] = m[2].trim().replace(/^(['"])(.*)\1$/, '$2');
-  }
-}
-
-function safeRead(path) {
-  try {
-    return readFileSync(path, 'utf8');
-  } catch {
-    return '';
-  }
-}
-
-const URL_ = required('NEXT_PUBLIC_SUPABASE_URL');
-const ANON = required('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-const SECRET = required('SUPABASE_SERVICE_ROLE_KEY');
-
-function required(name) {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} must be set to run the audit suite.`);
-  return value;
-}
+const URL_ = requireEnv('NEXT_PUBLIC_SUPABASE_URL', 'Required to run the audit suite.');
+const ANON = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'Required to run the audit suite.');
+const SECRET = requireEnv('SUPABASE_SERVICE_ROLE_KEY', 'Required to run the audit suite.');
 
 const admin = createClient(URL_, SECRET, { auth: { persistSession: false } });
 

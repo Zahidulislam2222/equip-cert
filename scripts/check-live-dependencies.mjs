@@ -23,37 +23,12 @@
  */
 
 import { setTimeout as delay } from 'node:timers/promises';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { CONTENTFUL_CDA_URL, env, loadEnvLocal } from './lib/ops-env.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-/**
- * Load .env.local the way `next build` would.
- *
- * A plain Node script gets none of Next.js's env loading, so without this the checks all
- * report "not configured" on a developer machine and the gate passes by doing nothing — the
- * exact silent-green failure it was written to prevent. In CI the values arrive as real
- * environment variables and the file is absent, so anything already set wins.
- */
-function loadDotEnvLocal() {
-  let raw;
-  try {
-    raw = readFileSync(join(ROOT, '.env.local'), 'utf8');
-  } catch {
-    return; // Fine in CI.
-  }
-  for (const line of raw.split(/\r?\n/)) {
-    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-    if (!match) continue;
-    const [, key, rawValue] = match;
-    if (process.env[key] !== undefined) continue; // Real environment wins.
-    process.env[key] = rawValue.trim().replace(/^(['"])(.*)\1$/, '$2');
-  }
-}
-
-loadDotEnvLocal();
+// A plain Node script gets none of Next.js's env loading, so without this the checks all report
+// "not configured" on a developer machine and the gate passes by doing nothing — the exact
+// silent-green failure it was written to prevent.
+loadEnvLocal();
 
 const TIMEOUT_MS = 8_000;
 const RETRIES = 2;
@@ -71,20 +46,20 @@ const checks = [
   {
     name: 'Supabase Auth',
     url: () => {
-      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const base = env('NEXT_PUBLIC_SUPABASE_URL');
       return base ? `${base.replace(/\/$/, '')}/auth/v1/health` : null;
     },
-    headers: () => ({ apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' }),
+    headers: () => ({ apikey: env('NEXT_PUBLIC_SUPABASE_ANON_KEY') ?? '' }),
     requires: ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'],
     expectStatus: (s) => s === 200,
   },
   {
     name: 'Supabase REST',
     url: () => {
-      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const base = env('NEXT_PUBLIC_SUPABASE_URL');
       return base ? `${base.replace(/\/$/, '')}/rest/v1/` : null;
     },
-    headers: () => ({ apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' }),
+    headers: () => ({ apikey: env('NEXT_PUBLIC_SUPABASE_ANON_KEY') ?? '' }),
     requires: ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'],
     // PostgREST answers 200 with the OpenAPI document; a project with everything revoked
     // from `anon` may answer 401. Either proves the project exists and is not paused.
@@ -93,13 +68,13 @@ const checks = [
   {
     name: 'Contentful CDA',
     url: () => {
-      const space = process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID;
+      const space = env('NEXT_PUBLIC_CONTENTFUL_SPACE_ID');
       return space
-        ? `https://cdn.contentful.com/spaces/${space}/environments/master/content_types?limit=1`
+        ? `${CONTENTFUL_CDA_URL}/spaces/${space}/environments/master/content_types?limit=1`
         : null;
     },
     headers: () => ({
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN ?? ''}`,
+      Authorization: `Bearer ${env('NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN') ?? ''}`,
     }),
     requires: ['NEXT_PUBLIC_CONTENTFUL_SPACE_ID', 'NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN'],
     expectStatus: (s) => s === 200,
@@ -109,7 +84,7 @@ const checks = [
 /** Fetch with a hard timeout, retried on transport failure only. */
 async function probe(check) {
   const url = check.url();
-  const missing = check.requires.filter((name) => !process.env[name]);
+  const missing = check.requires.filter((name) => !env(name));
   if (missing.length > 0 || !url) {
     return { state: 'skipped', detail: `not configured (${missing.join(', ')})` };
   }
