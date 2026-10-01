@@ -213,15 +213,22 @@ jobs:
       # green no matter what the advisors said. DEF-056. The logic lives in a script now, the
       # output shape is pinned with `--output-format json --agent no`, and output it cannot
       # parse is a failure rather than a pass.
+      #
+      # The password is passed here too, on purpose. Without it, `--linked` makes the CLI
+      # (2.117) create a temporary login role, which needs `database_write` — and the access
+      # token is deliberately a READ-ONLY scoped token (2026-10-01). Verified both ways: 403
+      # "Missing required permission(s): database_write" without the password, pass with it.
       - name: Supabase security advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: npm run test:advisors -- security
 
       - name: Supabase performance advisors
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: npm run test:advisors -- performance
 
