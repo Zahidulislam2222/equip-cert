@@ -675,7 +675,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      erase_subject: {
+        Args: { p_profile_id: string }
+        Returns: {
+          corrective_actions_unassigned: number
+          inspections_anonymized: number
+        }[]
+      }
     }
     Enums: {
       consent_method: "web_form" | "mobile_app" | "api" | "import"

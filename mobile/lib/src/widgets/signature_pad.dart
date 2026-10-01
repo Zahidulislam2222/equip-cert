@@ -153,10 +153,19 @@ class SignaturePadController extends ChangeNotifier {
 }
 
 class SignaturePad extends StatefulWidget {
-  const SignaturePad({super.key, required this.controller, this.height = 180});
+  const SignaturePad({
+    super.key,
+    required this.controller,
+    this.height = 180,
+    this.enabled = true,
+  });
 
   final SignaturePadController controller;
   final double height;
+
+  /// False until the signer has given e-signature consent (DEF-067). A disabled pad ignores
+  /// every gesture, so no stroke can exist without consent having been given first.
+  final bool enabled;
 
   @override
   State<SignaturePad> createState() => _SignaturePadState();
@@ -188,35 +197,40 @@ class _SignaturePadState extends State<SignaturePad> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppMetrics.radiusMd),
-            child: GestureDetector(
-              // `onPanX` rather than a Listener: pan gestures are already disambiguated from
-              // the enclosing scroll view, so drawing does not scroll the page underneath.
-              onPanStart: (DragStartDetails details) =>
-                  widget.controller.begin(details.localPosition, _size),
-              onPanUpdate: (DragUpdateDetails details) =>
-                  widget.controller.extend(details.localPosition),
-              onPanEnd: (DragEndDetails _) => widget.controller.end(),
-              onTapDown: (TapDownDetails details) {
-                widget.controller.begin(details.localPosition, _size);
-                widget.controller.end();
-              },
-              child: AnimatedBuilder(
-                animation: widget.controller,
-                builder: (BuildContext context, Widget? _) => CustomPaint(
-                  painter: _SignaturePainter(
-                    strokes: widget.controller.strokes,
-                    color: c.foreground,
+            child: IgnorePointer(
+              ignoring: !widget.enabled,
+              child: GestureDetector(
+                // `onPanX` rather than a Listener: pan gestures are already disambiguated from
+                // the enclosing scroll view, so drawing does not scroll the page underneath.
+                onPanStart: (DragStartDetails details) =>
+                    widget.controller.begin(details.localPosition, _size),
+                onPanUpdate: (DragUpdateDetails details) =>
+                    widget.controller.extend(details.localPosition),
+                onPanEnd: (DragEndDetails _) => widget.controller.end(),
+                onTapDown: (TapDownDetails details) {
+                  widget.controller.begin(details.localPosition, _size);
+                  widget.controller.end();
+                },
+                child: AnimatedBuilder(
+                  animation: widget.controller,
+                  builder: (BuildContext context, Widget? _) => CustomPaint(
+                    painter: _SignaturePainter(
+                      strokes: widget.controller.strokes,
+                      color: c.foreground,
+                    ),
+                    size: Size.infinite,
+                    child: widget.controller.isEmpty
+                        ? Center(
+                            child: Text(
+                              widget.enabled
+                                  ? 'Sign here'
+                                  : 'Agree to sign electronically first',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: c.mutedForeground),
+                            ),
+                          )
+                        : null,
                   ),
-                  size: Size.infinite,
-                  child: widget.controller.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Sign here',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: c.mutedForeground),
-                          ),
-                        )
-                      : null,
                 ),
               ),
             ),

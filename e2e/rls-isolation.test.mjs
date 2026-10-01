@@ -106,11 +106,21 @@ before(async () => {
 after(async () => {
   // Delete the auth users first: profiles cascade from them, and inspections then hold a NULL
   // inspector rather than blocking on a foreign key.
+  // supabase-js reports failure in `error`, not by throwing — a `.catch` alone saw nothing (DEF-072).
   for (const user of Object.values(fixture.users)) {
-    await admin.auth.admin.deleteUser(user.id).catch(() => {});
+    const { error } = await admin.auth.admin
+      .deleteUser(user.id)
+      .catch((thrown) => ({ error: thrown }));
+    if (error) console.warn(`fixture user ${user.email} left in place: ${error.message}`);
   }
+  // A fixture org that holds a SIGNED inspection can never be deleted — that is the immutability
+  // this suite asserts (NFPA 10 / ESIGN). Reported, not thrown: failing here would fail every run
+  // for a rule the suite exists to prove. Before DEF-072 this loop discarded the error, and two
+  // orgs per run accumulated in the live project unseen.
   for (const org of [fixture.orgA, fixture.orgB]) {
-    if (org) await admin.from('organizations').delete().eq('id', org.id);
+    if (!org) continue;
+    const { error } = await admin.from('organizations').delete().eq('id', org.id);
+    if (error) console.warn(`fixture org ${org.name} left in place: ${error.message}`);
   }
 });
 

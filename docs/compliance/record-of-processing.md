@@ -128,8 +128,7 @@ Not processed. The product is used by qualified technicians at work.
 - Service-role credentials never leave server handlers and are never `NEXT_PUBLIC_`
 - Secret scanning (gitleaks) and SAST (bandit, semgrep) on every commit
 
-- *(Built and e2e-tested; migration `20260914000100` not yet applied to the hosted database as of
-  2026-09-24 — until it is, the measures in this bullet describe the target state.)*
+- *(Migration `20260914000100` applied to the hosted database on 2026-10-01 and e2e-tested there.)*
   Append-only audit log of security- and compliance-relevant **changes** (inspections, corrective
   actions, membership and roles, organisation plan and retention, equipment, privacy requests,
   consent), written by database triggers in the same transaction as the change. Entries hold the

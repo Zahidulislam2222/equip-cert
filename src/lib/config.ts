@@ -9,6 +9,26 @@ function intEnv(raw: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+// The two shapes `.env.example` uses for a secret it cannot ship: `your-supabase-anon-key` and
+// `sk_test_...`. Copying the example file is the common way to start, so a value of that shape
+// is a value nobody filled in — not a credential (DEF-003).
+function isPlaceholderSecret(value: string): boolean {
+  return /^your-/i.test(value) || value.endsWith('...');
+}
+
+/** Names (never values) of server secrets that still hold an `.env.example` placeholder. */
+const placeholderSecrets: string[] = [];
+
+/** Read a server secret. A placeholder resolves to '' so every caller reports "not configured". */
+function secretEnv(name: string, raw: string | undefined): string {
+  const value = (raw ?? '').trim();
+  if (value && isPlaceholderSecret(value)) {
+    placeholderSecrets.push(name);
+    return '';
+  }
+  return value;
+}
+
 export const config = {
   // App
   app: {
@@ -95,11 +115,17 @@ export const config = {
 
 // Server-only config (Vercel serverless functions only — never import in client code)
 export const serverConfig = {
+  // Filled as the secrets below are read; listed for logging, so it holds names only.
+  placeholderSecrets,
   ai: {
     provider: (process.env.AI_PROVIDER || 'google') as 'google' | 'openai' | 'anthropic',
     model: process.env.AI_MODEL_NAME || 'gemini-2.5-flash',
     // GOOGLE_AI_API_KEY is a legacy name kept only as a fallback — see CREDENTIALS.md §15.
-    apiKey: process.env.AI_API_KEY || process.env.GOOGLE_AI_API_KEY || '',
+    // Each name is checked on its own, so a placeholder left in one cannot mask a real key in
+    // the other, and the log names the variable that actually holds the placeholder.
+    apiKey:
+      secretEnv('AI_API_KEY', process.env.AI_API_KEY) ||
+      secretEnv('GOOGLE_AI_API_KEY', process.env.GOOGLE_AI_API_KEY),
     maxTokens: intEnv(process.env.AI_MAX_TOKENS, 1024),
     // Anthropic REST details: this is the one authoritative definition.
     anthropic: {
@@ -108,12 +134,12 @@ export const serverConfig = {
     },
   },
   stripe: {
-    secretKey: process.env.STRIPE_SECRET_KEY || '',
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    secretKey: secretEnv('STRIPE_SECRET_KEY', process.env.STRIPE_SECRET_KEY),
+    webhookSecret: secretEnv('STRIPE_WEBHOOK_SECRET', process.env.STRIPE_WEBHOOK_SECRET),
   },
   // Bypasses RLS — server-side handlers only, never a NEXT_PUBLIC_ var.
   supabase: {
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    serviceRoleKey: secretEnv('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY),
   },
   // Operational limits for the /api/analyze endpoint
   analyze: {

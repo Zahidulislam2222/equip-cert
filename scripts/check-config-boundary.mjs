@@ -281,6 +281,82 @@ if (existsSync(DART_CONFIG_MODULE)) {
   }
 }
 
+// ---------------------------------------------------------------------------------------
+// Every external origin the browser may contact must be disclosed (DEF-066).
+//
+// sub-processors.md once claimed it could be "checked against the CSP rather than believed",
+// and failed that check: the CSP allowed Nominatim, which received precise GPS coordinates,
+// and the document did not name it. The CSP in vercel.json is the source the self-hosted
+// Caddy headers are generated from, so one parse covers both delivery targets.
+// ---------------------------------------------------------------------------------------
+const CSP_SOURCE = 'vercel.json';
+const DISCLOSURE_DOC = 'docs/compliance/sub-processors.md';
+
+if (existsSync(CSP_SOURCE)) {
+  const policies = [];
+  const collect = (node) => {
+    if (Array.isArray(node)) node.forEach(collect);
+    else if (node && typeof node === 'object') {
+      if (typeof node.key === 'string' && node.key.toLowerCase() === 'content-security-policy') {
+        policies.push(String(node.value ?? ''));
+      }
+      Object.values(node).forEach(collect);
+    }
+  };
+  collect(JSON.parse(readFileSync(CSP_SOURCE, 'utf8')));
+
+  // Tokenise every directive's source list rather than pattern-matching URLs: a URL regex misses
+  // a bare host (`api.example.com`), a wildcard host, `http:`/`ws:` and an upper-case scheme —
+  // each a real way to widen the policy without the gate noticing. Every token that is not a
+  // quoted keyword or a local scheme is an external origin and must be disclosed.
+  const LOCAL_SOURCES = new Set(['data:', 'blob:', 'mediastream:', 'filesystem:']);
+  const origins = new Set();
+  for (const policy of policies) {
+    for (const directive of policy.split(';')) {
+      const [name, ...sources] = directive.trim().split(/\s+/);
+      if (!name || name === 'upgrade-insecure-requests' || name === 'block-all-mixed-content') continue;
+      for (const raw of sources) {
+        const source = raw.toLowerCase();
+        if (source.startsWith("'") || LOCAL_SOURCES.has(source)) continue;
+        if (/^[a-z][a-z0-9+.-]*:$/.test(source)) {
+          // A bare scheme (`https:`) allows every host on it — nothing could disclose that.
+          violations.push({
+            file: CSP_SOURCE,
+            line: 1,
+            rule: 'csp-scheme-wildcard',
+            description: `${name} allows the whole "${source}" scheme — every host on it is a recipient`,
+            excerpt: '',
+          });
+          continue;
+        }
+        origins.add(source);
+      }
+    }
+  }
+  const disclosure = existsSync(DISCLOSURE_DOC) ? readFileSync(DISCLOSURE_DOC, 'utf8') : '';
+
+  if (policies.length === 0) {
+    violations.push({
+      file: CSP_SOURCE,
+      line: 1,
+      rule: 'csp-missing',
+      description: 'no Content-Security-Policy header found, so the disclosure check has nothing to check',
+      excerpt: '',
+    });
+  }
+  for (const origin of origins) {
+    if (!disclosure.includes(`\`${origin}\``)) {
+      violations.push({
+        file: DISCLOSURE_DOC,
+        line: 1,
+        rule: 'csp-origin-undisclosed',
+        description: `${origin} is allowed by the CSP in ${CSP_SOURCE} but not listed (in backticks) in the origins table`,
+        excerpt: '',
+      });
+    }
+  }
+}
+
 if (violations.length > 0) {
   console.error(`\n✖ Configuration boundary violated (${violations.length}):\n`);
   for (const v of violations) {

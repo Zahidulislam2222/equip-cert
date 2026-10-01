@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { config, serverConfig } from '../../src/lib/config';
+import { readRawBody, RawBodyUnavailableError } from '../../src/lib/webhook-body';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -13,20 +14,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseServiceKey = serverConfig.supabase.serviceRoleKey;
 
   if (!secretKey || !webhookSecret || !supabaseUrl || !supabaseServiceKey) {
+    // Names only, never values. A placeholder copied from .env.example counts as unset (DEF-003).
+    if (serverConfig.placeholderSecrets.length > 0) {
+      console.error('Placeholder secrets configured:', serverConfig.placeholderSecrets.join(', '));
+    }
     return res.status(500).json({ error: 'Stripe or Supabase not configured' });
   }
 
   const stripe = new Stripe(secretKey);
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  const sig = req.headers['stripe-signature'] as string;
-  const rawBody = req.body;
+  const sig = req.headers['stripe-signature'];
+  if (typeof sig !== 'string' || sig.length === 0) {
+    return res.status(400).json({ error: 'Missing signature' });
+  }
+
+  // The exact bytes Stripe signed — never `req.body`, which Vercel JSON-parses (DEF-008).
+  let rawBody: Buffer;
+  try {
+    rawBody = await readRawBody(req);
+  } catch (err: unknown) {
+    if (err instanceof RawBodyUnavailableError) {
+      // Loud: this is a wiring fault (the route lost its raw-body handling), not a bad request,
+      // and Stripe would otherwise retry into the same silent 400 that DEF-008 was.
+      console.error('Stripe webhook misconfigured:', err.message);
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    throw err;
+  }
 
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: unknown) {
-    console.error('Webhook signature verification failed:', err);
+    // The message only: Stripe's error object carries the whole payload, customer data included.
+    console.error('Webhook signature verification failed:', err instanceof Error ? err.message : 'unknown error');
     return res.status(400).json({ error: 'Invalid signature' });
   }
 

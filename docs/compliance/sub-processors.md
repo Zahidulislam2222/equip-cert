@@ -1,7 +1,7 @@
 # Sub-processors
 
 **Controller:** [CONTROLLER LEGAL NAME]
-**Version:** 2026-09-24
+**Version:** 2026-10-01
 **Review trigger:** before any new third party receives personal data, and at least annually
 
 GDPR Art. 28(2) requires the controller's prior authorisation before a processor engages a
@@ -48,6 +48,25 @@ Two public services are reached directly from the browser or the app. Neither of
 | **Have I Been Pwned** — Pwned Passwords range API | Warns a user whose chosen password appears in known breaches | The requester's IP address and the first five characters of the password's SHA-1 hash — k-anonymity, so neither the password nor its full hash leaves the device | Public API; no DPA | Found missing 2026-09-24 |
 
 The privacy policy's recipient summary does not yet name either service. That is an open item on the [roadmap](../ROADMAP.md).
+
+### Every origin the web app is allowed to contact
+
+This table is checked, not trusted: `npm run test:config` reads every external origin in the
+Content-Security-Policy in `vercel.json` (the self-hosted server's headers are generated from the
+same file) and fails the build if one is missing here. That is the check DEF-066 showed was
+missing — the policy named Nominatim while this document did not.
+
+| Origin in the CSP | Recipient |
+|---|---|
+| `https://*.supabase.co` | Supabase |
+| `wss://*.supabase.co` | Supabase (realtime) |
+| `https://cdn.contentful.com` | Contentful |
+| `https://*.stripe.com` | Stripe |
+| `https://nominatim.openstreetmap.org` | OpenStreetMap Foundation — Nominatim |
+| `https://api.pwnedpasswords.com` | Have I Been Pwned — Pwned Passwords |
+
+Server-side calls — the AI provider from `/api/analyze`, Supabase from the API handlers — are
+not in the browser's policy and are covered by the sub-processor table above.
 
 ---
 

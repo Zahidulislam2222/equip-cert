@@ -51,7 +51,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **AI Equipment ID** | Point camera at equipment — AI identifies type, serial number, and visible safety issues |
 | **Smart Checklists** | Dynamic questions loaded from CMS based on equipment type |
 | **GPS Evidence** | Automatic location capture proving the technician was on-site |
-| **Digital Signatures** | Built to the ESIGN / UETA elements: consent to sign electronically (an explicit control on web; a notice on mobile, control planned), attribution to the signed-in user, immutable record |
+| **Digital Signatures** | Built to the ESIGN / UETA elements: an explicit consent-to-sign-electronically control on web and mobile (the consent itself is not yet stored as evidence — DEF-074), attribution to the signed-in user, immutable record |
 | **Offline Mode** | Complete inspections without connectivity — auto-syncs when back online |
 | **Photo Evidence** | Capture and attach photographic evidence to any inspection |
 
@@ -210,7 +210,7 @@ placeholders for the operator's legal identity and have not been reviewed by cou
 | **Input Validation** | Zod schema on all API inputs — type, size, and format enforced |
 | **Rate Limiting** | Per IP and per account on the AI endpoint, per IP on the privacy-request endpoint, shared across replicas when a store is configured |
 | **RLS (Row Level Security)** | Every tenant table scoped to organization and FORCEd; cross-tenant isolation proven by an e2e suite |
-| **Audit Log** | Changes to inspections, roles, plans, equipment and privacy requests written by triggers; clients cannot write or edit it — built and e2e-tested, not yet applied to the hosted database |
+| **Audit Log** | Changes to inspections, roles, plans, equipment and privacy requests written by triggers; clients cannot write or edit it — live on the hosted database since 2026-10-01, e2e-tested there |
 | **Server Hardening** | Header/request/keep-alive timeouts, bounded bodies, graceful drain, non-root read-only container |
 | **Feature Gating (DB-level)** | PostgreSQL trigger enforces free plan limits — cannot bypass via DevTools |
 | **Immutable Records** | Signed inspections cannot be UPDATE'd or DELETE'd (trigger) |

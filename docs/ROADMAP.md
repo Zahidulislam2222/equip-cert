@@ -26,7 +26,7 @@ In the repository, built and tested. "Built" is not "live": the items Phase 1 na
 |---|---|
 | Product | AI equipment identification, CMS-driven checklists, GPS and photo evidence, e-signature, immutable records, PDF reports, corrective actions, schedules, realtime notifications, roles |
 | Clients | Next.js 16 static web app; Flutter Android + iOS client with offline queue (423 tests) |
-| Data | 11-table schema, row-level security, trigger-written audit log (migration built, not yet applied to the hosted database), plan limits in the database, EU residency |
+| Data | 11-table schema, row-level security, trigger-written audit log (live since 2026-10-01), plan limits in the database, EU residency |
 | Compliance | GDPR records and procedures, consent with equal-prominence reject, Global Privacy Control, privacy request intake, AI Act Art. 50 disclosure and PDF marking — [legal map](compliance/README.md) |
 | Security | Threat model, hardened headers, private evidence storage, rate limits, secret boundary enforced in CI — [security model](SECURITY-MODEL.md) |
 | Scale groundwork | Stateless origin, replica pool generator, Kubernetes manifests (HPA 3→50, PDB, NetworkPolicy), shared rate-limit store, read-replica routing, k6 capacity plan |
@@ -45,9 +45,8 @@ Closes the gaps that matter before a paying customer, most of them owner actions
 | CAPTCHA on sign-in and sign-up, mobile first | The control that actually stops credential stuffing ([SECURITY-MODEL.md](SECURITY-MODEL.md) §5) |
 | Counsel review of the privacy policy, terms and DPA; fill the operator's legal identity | Every legal document says "not reviewed by counsel" until this is done |
 | Name the geocoding and breached-password services in the privacy policy (DEF-066) | Disclosed in the third-party list; the policy text still lags |
-| Explicit consent-to-sign control in the mobile app (DEF-067) | The web client asks for it; the mobile client shows a notice only |
-| Production check passing | The 30-minute check goes live with the 2026-09-24 push; it will report failure until the hosted database is restored |
-| A web client test suite | The web app has build, lint and database e2e coverage but no unit or integration suite |
+| Store e-signature consent as evidence (DEF-074) | Both clients ask for it before signing; neither records it, so it cannot be shown later |
+| Web component and integration tests | The web app has 104 unit tests over `src/lib` and the API handlers, plus database e2e; no component or browser-flow suite yet |
 | CI check that every CSP `connect-src` origin appears in the sub-processor list | The gap that let DEF-066 through |
 | Configure Stripe (test mode first) | Checkout and webhooks are built; not configured |
 | One restore drill from a backup | Until one is run, every recovery-time figure is a target without evidence |

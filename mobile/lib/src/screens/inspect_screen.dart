@@ -40,6 +40,7 @@ import '../offline/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ai_disclosure.dart';
 import '../widgets/app_widgets.dart';
+import '../widgets/esign_consent.dart';
 import '../widgets/signature_pad.dart';
 import 'corrective_action_form.dart';
 import 'home_screen.dart'
@@ -63,6 +64,10 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
   final TextEditingController _serialNumber = TextEditingController();
   final TextEditingController _notes = TextEditingController();
   final SignaturePadController _signature = SignaturePadController();
+
+  /// Explicit e-signature consent for THIS inspection (DEF-067). The pad accepts no stroke
+  /// until it is true, and withdrawing it clears any signature already drawn.
+  bool _esignConsented = false;
 
   CapturedPhoto? _photo;
   AiProvenance? _provenance;
@@ -279,6 +284,7 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
     if (_equipmentName.text.trim().isEmpty) return 'Enter what you inspected.';
     if (_checklist.isEmpty) return 'The checklist has not loaded yet.';
     if (_pendingItems) return 'Answer every checklist item.';
+    if (!_esignConsented) return 'Agree to sign electronically, then sign.';
     if (_signature.isEmpty) {
       return 'Sign to confirm you carried out this inspection.';
     }
@@ -702,7 +708,17 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        SignaturePad(controller: _signature),
+        ESignConsent(
+          consented: _esignConsented,
+          enabled: !_submitting,
+          onChanged: (bool value) {
+            setState(() => _esignConsented = value);
+            // A signature must never outlive the consent it was given under.
+            if (!value) _signature.clear();
+          },
+        ),
+        const SizedBox(height: 12),
+        SignaturePad(controller: _signature, enabled: _esignConsented),
 
         const SizedBox(height: 24),
         if (_error != null) ...<Widget>[
