@@ -37,10 +37,10 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@radix-ui/react-slot": "^1.3.3",
+    "@radix-ui/react-slot": "^1.5.0",
     "@react-pdf/renderer": "^4.9.0",
     "@stripe/stripe-js": "^9.16.0",
-    "@supabase/supabase-js": "^2.116.0",
+    "@supabase/supabase-js": "^2.119.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "contentful": "^11.12.10",
@@ -52,13 +52,13 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-signature-canvas": "^1.1.0-alpha.2",
-    "recharts": "^3.10.1",
+    "recharts": "^3.11.0",
     "sonner": "^2.0.8",
     "stripe": "^22.6.2",
-    "tailwind-merge": "^3.7.0",
+    "tailwind-merge": "^3.7.1",
     "tailwindcss-animate": "^1.0.7",
     "three": "0.186.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -67,11 +67,11 @@
     "@types/react-dom": "^19",
     "@types/three": "0.185.4",
     "@vercel/node": "^5.5.16",
-    "autoprefixer": "^10.6.1",
+    "autoprefixer": "^10.7.0",
     "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.33",
     "supabase": "2.117.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
