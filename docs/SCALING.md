@@ -11,9 +11,12 @@ It uses three labels and never mixes them:
 | **Built** | The code or configuration exists in this repository and has been validated (tests, `caddy validate`, `kubeconform`, `k6 inspect`). |
 | **Designed for** | What the architecture is built to reach on a named tier. Not a measurement. |
 
+**Reviewed:** 2026-11-25.
+
 **The current deployment serves none of these numbers and claims none of them.** It is one
-container on a shared VPS with a free-tier database. What this repository demonstrates is that
-getting from here to there is configuration and provisioning, not a rewrite.
+container on a shared VPS with a free-tier database. What this repository provides is the path:
+getting from here to there is configuration and provisioning, not a rewrite, and each step below
+names the code that already exists for it.
 
 ---
 
@@ -133,7 +136,29 @@ scaling of a stateless process, which is standard but not measured here. Databas
    public OpenStreetMap Nominatim service, whose usage policy allows about one request per second
    and no heavy use. Its URL is configuration; at scale it must point at a self-hosted or
    contracted geocoder (DEF-066).
-6. **Origin CPU** — last, and cheapest to fix.
+6. **Help assistant** — free models are rate-limited by the router and the model hosts. The
+   assistant already degrades to the best help article when no model answers, so this limits
+   answer quality, not availability. At scale it moves to a contracted model endpoint (a
+   configuration change plus a cost decision).
+7. **Origin CPU** — last, and cheapest to fix.
+
+### 3.4 Data growth (estimate)
+
+Registered users grow storage; concurrent users grow load. The two are planned separately.
+
+| Item | Assumption | Per 1,000,000 inspections |
+|---|---|---|
+| Evidence photograph | captured at most 1,600 px on the long edge, JPEG quality 85 (configuration) — typically a few hundred KB | ≈ 0.3–0.6 TB |
+| Signature image | small PNG | ≈ 10–20 GB |
+| Inspection rows, checklist JSON, audit entries | a few KB each | ≈ 5–10 GB |
+
+At, for example, 100,000 organisations inspecting 20 extinguishers a month, that is 24 million
+inspections a year: roughly **10 TB of evidence files and well under 1 TB of database rows per
+year**. Files dominate, which is why the plan moves evidence to object storage with its own CDN
+before the database is sharded (§5). Records must be kept for their legal retention period; a
+scheduled disposal job for records past that period is on the [roadmap](ROADMAP.md), and until it
+runs, storage grows with every inspection. These figures are arithmetic from the
+stated assumptions, not measurements.
 
 ---
 

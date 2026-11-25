@@ -1,7 +1,7 @@
 # Personal data breach response
 
 **Controller:** [CONTROLLER LEGAL NAME]
-**Version:** 2026-09-10
+**Version:** 2026-11-25 (first issued 2026-09-10; reviewed 2026-11-25)
 **Owner of this procedure:** [INCIDENT RESPONSE OWNER]
 
 GDPR Art. 33 gives you **72 hours from becoming aware** of a personal data breach to notify the
@@ -41,8 +41,10 @@ delay past it is not.
 1. **Contain.** Revoke the exposed credential, make the bucket private, take the endpoint down.
    Containment beats diagnosis.
 2. **Preserve evidence before changing anything you do not have to.** Logs, access records, the
-   offending configuration. Fixing first and looking second destroys the record you will need to
-   answer "how many people were affected", which is the question you cannot avoid.
+   offending configuration, and an export of the affected organisations' audit log entries.
+   Fixing first and looking second destroys the record you will need to answer "how many people
+   were affected", which is the question you cannot avoid. The audit log records changes, not
+   reads, so it can show what was altered but not what was viewed.
 3. **Start a written timeline immediately**, with timestamps and who did what. Art. 33(5) requires
    documenting every breach regardless of whether it gets notified, and reconstructing a timeline
    from memory three days later produces a document that helps nobody.
@@ -113,11 +115,19 @@ everything they need, and do not communicate with their staff around them.
   unencrypted personal information resulting from a failure to maintain reasonable security.
 - **Contractual obligations to customers** are frequently shorter than the statutory deadline.
   Check the DPA before assuming 72 hours is the binding number.
+- **EU Cyber Resilience Act.** Once the mobile app is made available on the EU market, an actively
+  exploited vulnerability or a severe incident affecting its security must be reported through
+  ENISA's Single Reporting Platform (live since 11 September 2026): an early warning within
+  24 hours, a notification within 72 hours, and a final report. The app is not in any store yet,
+  so this does not apply today; the runbook is planned before release.
+- **Sub-processors.** A breach at Supabase, Stripe, the vision provider, OpenRouter or a hosting
+  provider is still our breach to assess. Ask the sub-processor for the Art. 33(3) facts at once,
+  and do not wait for their investigation to start our clock.
 
 ## 6. Afterwards
 
 - Complete the internal record: facts, effects, remedial action (Art. 33(5)).
-- Add a `DEFECT-LOG.md` row naming **which gate should have caught it** and whether that gate now
+- Add an entry to the internal defect log naming **which gate should have caught it** and whether that gate now
   exists. A post-mortem that does not change a gate has not finished.
 - Update this document if the response revealed a gap in it.
 

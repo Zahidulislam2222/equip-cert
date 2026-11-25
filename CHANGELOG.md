@@ -2,6 +2,49 @@
 
 Notable changes, newest first. Dates are commit dates. Full detail is in the Git history.
 
+## 2026-11-25 — Public documentation refresh
+
+- New: [API reference](docs/API.md), [AI in EquipCert](docs/AI-ASSISTANT.md) and
+  [testing and verification](docs/TESTING.md).
+- Architecture, security model, scaling, availability, roadmap, legal map, records of processing,
+  mobile and contributor guides brought in line with the released product.
+- Privacy policy now names the two public services without a processing agreement (reverse
+  geocoding and the breached-password check), closing the wording half of DEF-066.
+
+## 2026-11-25 — Teams, billing, help assistant and an end-to-end pass
+
+- **Teams:** administrators invite people with single-use, expiring links (only a hash is
+  stored); the plan's member limit is enforced by the database; members can be removed while the
+  records they signed stay intact.
+- **E-signature evidence:** consent to sign electronically is stored with its text version and the
+  server's time; the database refuses a signature without it, on insert and on update.
+- **Records:** inspection times can no longer be set by a client; inspections advance equipment due dates
+  and schedules; failed items lead to corrective actions; extinguishers get the built-in NFPA 10
+  checklist when the CMS has none.
+- **Billing:** Stripe Checkout, customer portal and per-user seats. The verified webhook alone
+  sets the plan, from the customer's whole subscription set. Live payments are switched on when
+  live keys are enabled.
+- **Help assistant** on web and mobile: disclosed as AI, answers from approved help articles and a
+  read-only view of the user's own organisation, never acts, keeps no transcript.
+- **Reports and Team pages** with CSV export guarded against spreadsheet formula injection.
+- **Offline:** queued work is sent when the app reopens online; another person's queued
+  submission is held, not filed under the current user.
+- **Testing:** Playwright browser suite with axe accessibility checks under the production CSP;
+  integration tests on a local database in CI; unit tests 104 → 144; Flutter tests 429 → 447.
+- **Security and dependencies:** production audit cleared (Next.js 16.4.6, zod 4.6.7).
+- **Recovery:** first restore drill — every live row restored into a database rebuilt from the
+  migrations, ≈ 68 s.
+
+## 2026-10-01 — Backend restored, audit log live
+
+- Hosted database back online; daily keep-alive now runs a real database query (DEF-069).
+- Trigger-written audit log and subject erasure applied to the hosted database.
+- Stripe webhook verifies the exact raw bytes on both hosts (DEF-008); placeholder secrets count
+  as unset (DEF-003).
+- Mobile client asks for consent to sign electronically before the signature pad accepts input.
+- CI check that every Content-Security-Policy origin is a disclosed recipient.
+- One owner for the operational scripts' environment.
+
 ## 2026-09-24 — Public documentation
 
 - Added a legal map covering OSHA, NFPA 10, ESIGN/UETA, eIDAS, GDPR, ePrivacy, US state privacy,

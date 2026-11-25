@@ -1,13 +1,24 @@
 # Documentation
 
-Public documentation for EquipCert AI. Every document separates what is **measured**, what is
-**built**, and what is only **designed for** — and says which is which.
+Public documentation for EquipCert AI, for customers evaluating the platform and for developers
+working on it. Every document separates what is **measured**, what is **built**, and what is
+only **designed for** — and says which is which.
+
+**Reviewed:** 2026-11-25.
+
+**Start here.** Customers: the [README](../README.md), then the [legal map](compliance/README.md),
+[security model](SECURITY-MODEL.md) and [availability](AVAILABILITY.md). Developers:
+[architecture](ARCHITECTURE.md), [API](API.md), [testing](TESTING.md) and
+[CONTRIBUTING](../CONTRIBUTING.md).
 
 | Document | Answers |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How the system is built, the data model, the key flows, and why each major decision was made |
-| [SCALING.md](SCALING.md) | What it takes to serve 10k, 100k and 1M concurrent users — the arithmetic, what breaks first, and the cost ladder |
-| [AVAILABILITY.md](AVAILABILITY.md) | Uptime targets per tier (99.9 % / 99.95 %), error budgets, failure modes, recovery objectives, runbooks |
+| [API.md](API.md) | Every server endpoint and database function: who may call it, what it accepts, how it fails |
+| [AI-ASSISTANT.md](AI-ASSISTANT.md) | The two uses of AI — equipment analysis and the help assistant — with their limits, privacy and evaluation |
+| [TESTING.md](TESTING.md) | Every test layer, what it proves, and the latest results |
+| [SCALING.md](SCALING.md) | What it takes to serve 10k, 100k and 1M+ concurrent users — the arithmetic, data growth, what breaks first, and the cost ladder |
+| [AVAILABILITY.md](AVAILABILITY.md) | Availability objectives per tier (99 % → 99.9 % → 99.95 % → 99.99 %), error budgets, failure modes, recovery objectives, the restore drill, runbooks |
 | [ROADMAP.md](ROADMAP.md) | The phases from today to 1M+ users, each with measurable exit criteria |
 | [SECURITY-MODEL.md](SECURITY-MODEL.md) | Assets, trust boundaries, a STRIDE threat model, the controls, and the known gaps |
 | [ACCESSIBILITY.md](ACCESSIBILITY.md) | WCAG 2.1 AA target, what is tested, and what is not yet |

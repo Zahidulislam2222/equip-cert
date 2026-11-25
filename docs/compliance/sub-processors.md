@@ -1,7 +1,8 @@
 # Sub-processors
 
 **Controller:** [CONTROLLER LEGAL NAME]
-**Version:** 2026-11-25
+**Version:** 2026-11-25 (reviewed 2026-11-25 against `vercel.json`, the API handlers and
+`src/content/privacy-policy.json`)
 **Review trigger:** before any new third party receives personal data, and at least annually
 
 GDPR Art. 28(2) requires the controller's prior authorisation before a processor engages a
@@ -25,12 +26,14 @@ route packets" is a party you did not disclose.
 | **Cloudflare** | DNS, TLS termination, CDN in front of the origin | IP addresses and request metadata in transit | Global edge | SCCs |
 | **Contabo** (shared VPS) | Hosting the origin server | Data in transit through the application process | Germany | None required |
 | **Vercel** | Alternative hosting target for the same build | Same as above, when that target is used | United States / global edge | SCCs; DPF where certified |
-| **Stripe** | Subscription payments | Billing contact and payment metadata. **Card numbers never reach our systems** | United States / EU | SCCs; DPF |
+| **Stripe** | Subscription billing: hosted checkout, customer portal, webhooks | The organisation name, the email address of the administrator who starts a checkout, the organisation id, and subscription and payment metadata. **Card numbers never reach our systems** | United States / EU | SCCs; DPF |
 | **OpenRouter** (OpenRouter, Inc.) and the upstream provider of the free model it routes to | The optional in-app help assistant (`/api/assist`) | The question the user types; when the question asks about their organisation, a read-only summary of that organisation's own records (counts, equipment names, due dates) | United States (OpenRouter); the upstream provider's location depends on the model | **Not yet established** — see below |
 
-**Stripe runs in TEST mode only (2026-11-25).** Checkout uses Stripe's test environment; no real
-card is charged and no live key is accepted (`STRIPE_ALLOW_LIVE_KEYS` gate). Switching to live mode
-is a sub-processor activation and needs this list and the privacy policy reviewed first.
+**Live payments are not enabled (2026-11-25).** Billing is built and connected to Stripe, but the
+server refuses a live Stripe key unless the operator explicitly allows live keys
+(`STRIPE_ALLOW_LIVE_KEYS`). Live payments are switched on when the operator enables live keys;
+until then no payment is taken and no card is charged. Enabling them is a sub-processor
+activation and needs this list and the privacy policy reviewed first.
 
 **OpenRouter is new on 2026-11-25 and is NOT cleared for real customer data.** The assistant calls
 only `:free` models (enforced in `src/lib/assist/core.ts`). Free endpoints may be served by
@@ -39,7 +42,7 @@ transfer mechanism has been verified for this account. The assistant therefore t
 type personal or confidential details, sends no names or email addresses of its own accord, and
 the privacy policy says the same. **Release blocker for real customers:** sign OpenRouter's DPA (or
 replace the provider), restrict routing to providers that do not retain prompts, and record the
-transfer basis here. Owner action, tracked in `TASKS.md`.
+transfer basis here. Owner action, tracked in the operator's task list.
 
 **The AI provider is configurable.** `AI_PROVIDER` selects Google, OpenAI or Anthropic. Google is
 the configured default. Changing it changes who receives inspection photographs, so it is a
@@ -57,7 +60,7 @@ Two public services are reached directly from the browser or the app. Neither of
 | **OpenStreetMap Foundation** — Nominatim | Turns the GPS position captured with an inspection into a street address | **Precise coordinates** of the inspection and the requester's IP address | Public usage policy; no DPA. The Foundation is UK-based (EU adequacy decision for the UK renewed to Dec 2031); where the requests are served from has not been verified | Found missing 2026-09-24 (DEF-066). Must be replaced by a self-hosted or contracted geocoder under a DPA before production use at scale |
 | **Have I Been Pwned** — Pwned Passwords range API | Warns a user whose chosen password appears in known breaches | The requester's IP address and the first five characters of the password's SHA-1 hash — k-anonymity, so neither the password nor its full hash leaves the device | Public API; no DPA | Found missing 2026-09-24 |
 
-The privacy policy's recipient summary does not yet name either service. That is an open item on the [roadmap](../ROADMAP.md).
+As of 2026-11-25 the privacy policy's "Who we share it with" section (`src/content/privacy-policy.json`) names both services and says what each receives. The open item that remains (DEF-066) is the missing processing agreement, tracked on the [roadmap](../ROADMAP.md).
 
 ### Every origin the web app is allowed to contact
 
@@ -82,7 +85,9 @@ not in the browser's policy and are covered by the sub-processor table above.
 ## What is deliberately not on this list
 
 **No analytics provider. No advertising network. No session-recording or heat-mapping tool. No
-error-tracking service. No customer-messaging widget. No CDN-hosted font or script.**
+error-tracking service. No customer-messaging widget. No CDN-hosted font or script.** No shared
+rate-limit store is configured by default; rate-limit counters stay in the server's memory, and
+enabling a shared store would add it to this list.
 
 That last one is not padding. A Google Fonts stylesheet reached from the browser sends every
 visitor's IP address to a third country on page load; a German court has held that doing so

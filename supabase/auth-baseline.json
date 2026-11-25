@@ -84,7 +84,7 @@
     },
     "disable_signup": {
       "value": false,
-      "reason": "Open sign-up is deliberate for a demo product. Recorded so it reads as a decision rather than an oversight."
+      "reason": "Open sign-up is deliberate: organisations self-provision. Recorded so it reads as a decision rather than an oversight."
     },
     "password_min_length": {
       "value": 12,

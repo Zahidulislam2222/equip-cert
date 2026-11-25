@@ -4,7 +4,7 @@
 
 ### AI-Powered Equipment Safety Inspection & Compliance Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.3-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-3FCF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
@@ -16,9 +16,9 @@
 
 **Identify equipment with AI. Run safety checklists. Produce signed inspection records built around OSHA 29 CFR 1910.157 and NFPA 10. All from your phone.**
 
-**[Live site](https://equipcert.zahidul-islam.com)**¹ &nbsp;&middot;&nbsp; [Documentation](docs/README.md) &nbsp;&middot;&nbsp; [Roadmap](docs/ROADMAP.md) &nbsp;&middot;&nbsp; [Built to scale](#built-to-scale) &nbsp;&middot;&nbsp; [Legal map](docs/compliance/README.md) &nbsp;&middot;&nbsp; [Security](docs/SECURITY-MODEL.md) &nbsp;&middot;&nbsp; [Getting Started](#getting-started)
+**[Live site](https://equipcert.zahidul-islam.com)** &nbsp;&middot;&nbsp; [Documentation](docs/README.md) &nbsp;&middot;&nbsp; [API](docs/API.md) &nbsp;&middot;&nbsp; [Roadmap](docs/ROADMAP.md) &nbsp;&middot;&nbsp; [Built to scale](#built-to-scale) &nbsp;&middot;&nbsp; [Legal map](docs/compliance/README.md) &nbsp;&middot;&nbsp; [Security](docs/SECURITY-MODEL.md) &nbsp;&middot;&nbsp; [Getting Started](#getting-started)
 
-¹ *Status 2026-09-24: the site is up, but the hosted database it is built against is offline, so sign-in does not work until it is restored. See [ROADMAP.md](docs/ROADMAP.md) Phase 1.*
+*Status 2026-11-25: web app, API and hosted database live (EU, Frankfurt); all five CI jobs passing. Evidence: [TESTING.md](docs/TESTING.md).*
 
 ---
 
@@ -51,7 +51,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **AI Equipment ID** | Point camera at equipment — AI identifies type, serial number, and visible safety issues |
 | **Smart Checklists** | Dynamic questions loaded from CMS based on equipment type |
 | **GPS Evidence** | Automatic location capture proving the technician was on-site |
-| **Digital Signatures** | Built to the ESIGN / UETA elements: an explicit consent-to-sign-electronically control on web and mobile (the consent itself is not yet stored as evidence — DEF-074), attribution to the signed-in user, immutable record |
+| **Digital Signatures** | Built to the ESIGN / UETA elements: explicit consent to sign electronically on web and mobile, stored with its wording version and the server's time; the database refuses a signature without it. Attributed to the signed-in user; the signed record is immutable |
 | **Offline Mode** | Complete inspections without connectivity — auto-syncs when back online |
 | **Photo Evidence** | Capture and attach photographic evidence to any inspection |
 
@@ -66,7 +66,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **PDF Reports** | Downloadable inspection reports, machine-readably marked when AI-assisted (EU AI Act Art. 50) |
 | **Team Management** | Role-based access control — admin, manager, technician. Admins invite people with a single-use, expiring link (only its hash is stored); seats follow the plan |
 | **Reports** | 30/90/365-day summaries, weekly trend chart with a table alternative, per-inspector breakdown, CSV export guarded against spreadsheet formula injection |
-| **Billing** | Stripe Checkout and Customer Portal (test mode). The plan is set only by the verified webhook — a browser cannot change it |
+| **Billing** | Stripe Checkout, Customer Portal and per-user seats. The plan is set only by the verified webhook — a browser cannot change it. Live payments are switched on when the operator enables live keys |
 | **Real-time Notifications** | Instant alerts for failures, overdue actions, and upcoming inspections |
 
 ### Platform
@@ -78,7 +78,7 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **Help Assistant** | In-app AI help (web and mobile), disclosed as AI, answering from approved help articles and a read-only summary of the user's own organisation. Free models only, rate-limited, falls back to the best article when no model answers |
 | **Dark-first design** | Warm near-black surfaces, one Safety Yellow accent, Archivo + Inter; semantic colour pairs contrast-tested against WCAG. Light mode available |
 | **Mobile App** | Native Flutter client for Android and iOS (`mobile/`), sharing the backend, schema and compliance contracts |
-| **Plan Tiers** | Free / Pro / Enterprise limits enforced by a database trigger. Stripe checkout is integrated but not configured |
+| **Plan Tiers** | Free / Pro / Enterprise limits — inspections, signatures and members — enforced by database triggers |
 
 ---
 
@@ -103,7 +103,7 @@ on a free-tier database and claims none of the large numbers.
 | Continuous production check: health, readiness, headers, compiled backend | `.github/workflows/production-check.yml` | Built |
 
 - **[docs/SCALING.md](docs/SCALING.md)** — the capacity model for 10k / 100k / 1M concurrent, the arithmetic, the order things break in, and the cost ladder.
-- **[docs/AVAILABILITY.md](docs/AVAILABILITY.md)** — SLOs per tier (99.9 % / 99.95 %), error budgets, failure modes, RPO/RTO and runbooks.
+- **[docs/AVAILABILITY.md](docs/AVAILABILITY.md)** — availability objectives from 99 % through 99.9 %, 99.95 % and 99.99 %, error budgets, failure modes, RPO/RTO, a measured restore drill and runbooks.
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — the phases from today to 1M+ concurrent users, each ending in a measured exit criterion rather than a date.
 
 ---
@@ -133,12 +133,14 @@ on a free-tier database and claims none of the large numbers.
  │  Serverless  │  │                  │
  │              │  │  Auth            │
  │  /api/analyze│  │  PostgreSQL + RLS│
- │  /api/dsar   │  │  Storage         │
- │  /api/       │  │  Realtime        │
+ │  /api/assist │  │  Storage         │
+ │  /api/dsar   │  │  Realtime        │
+ │  /api/billing│  │                  │
+ │  /api/       │  │                  │
  │  webhooks/   │  │                  │
  │  stripe      │  │                  │
  │  AI Provider │  │                  │
- │  Abstraction │  │  11 tables       │
+ │  Abstraction │  │  13 tables       │
  └──────────────┘  └──────────────────┘
 ```
 
@@ -157,9 +159,10 @@ on a free-tier database and claims none of the large numbers.
 | Styling | **Tailwind CSS 3.4** | Design tokens owned by `src/app/globals.css` — dark-first, Safety Yellow accent |
 | UI | **Radix Slot** + CVA | Composable component variants |
 | Auth | **Supabase Auth** | Email, magic link, OAuth — with RLS for data isolation |
-| Database | **Supabase PostgreSQL** (EU) | 11 tables, Row Level Security, triggers, realtime subscriptions |
-| AI | **Gemini / OpenAI / Claude** | Abstracted provider — swap via env var |
-| Payments | **Stripe** | Checkout and webhooks built; not configured yet |
+| Database | **Supabase PostgreSQL** (EU) | 13 tables, Row Level Security, triggers, realtime subscriptions |
+| AI | **Gemini / OpenAI / Claude** | Equipment analysis behind one provider interface — swap via env var |
+| AI help | **OpenRouter** (free models, allow-listed) | Help assistant with retrieval over approved articles; falls back to the article itself |
+| Payments | **Stripe** | Checkout, customer portal, seats and signed webhooks; live payments on when live keys are enabled |
 | Mobile | **Flutter** | Native Android + iOS client with camera, GPS and offline queue |
 | CMS | **Contentful** | Dynamic equipment checklists managed by non-developers |
 | PDF | **react-pdf/renderer** | Server-quality inspection reports in the browser |
@@ -175,6 +178,8 @@ on a free-tier database and claims none of the large numbers.
 
 ```
 organizations ─┬── profiles (role-based: admin / manager / technician)
+               ├── organization_invites (single-use, expiring; token stored only as a hash)
+               ├── billing_events (a repeated Stripe delivery is skipped)
                ├── equipment (registry with status + due dates)
                ├── inspections (photos, GPS, signatures, audit trail)
                │   └── corrective_actions (severity, assignment, resolution)
@@ -182,11 +187,11 @@ organizations ─┬── profiles (role-based: admin / manager / technician)
                ├── notifications (realtime via Supabase)
                ├── consent_records (what was agreed to, against which policy version)
                ├── data_subject_requests (privacy requests with statutory deadlines)
-               └── audit_log (append-only; trigger-written once the latest migration is applied to the hosted database)
+               └── audit_log (append-only; written by triggers in the same transaction)
 plan_limits (generated from src/lib/plans.ts)
 ```
 
-**Row Level Security** is enabled on all 11 tables and forced on the 10 holding tenant data — users only see data from their organization. Signed inspection records are **immutable** (database trigger prevents modification after signature).
+**Row Level Security** is enabled on all 13 tables and forced on the 12 holding tenant data — users only see data from their organization. Signed inspection records are **immutable** (database trigger prevents modification after signature), and inspection record times are set by a database trigger, never the device.
 
 ---
 
@@ -209,9 +214,9 @@ placeholders for the operator's legal identity and have not been reviewed by cou
 
 | Protection | Implementation |
 |-----------|---------------|
-| **API Authentication** | JWT verification on `/api/analyze` — unauthenticated requests rejected |
+| **API Authentication** | JWT verification on every account endpoint (`/api/analyze`, `/api/assist`, `/api/billing/*`); roles read from the database; Stripe webhooks verified by signature over the raw bytes |
 | **Input Validation** | Zod schema on all API inputs — type, size, and format enforced |
-| **Rate Limiting** | Per IP and per account on the AI endpoint, per IP on the privacy-request endpoint, shared across replicas when a store is configured |
+| **Rate Limiting** | Per address and per account on the AI analysis, help-assistant and billing endpoints, per address on the privacy-request endpoint; shared across replicas when a store is configured |
 | **RLS (Row Level Security)** | Every tenant table scoped to organization and FORCEd; cross-tenant isolation proven by an e2e suite |
 | **Audit Log** | Changes to inspections, roles, plans, equipment and privacy requests written by triggers; clients cannot write or edit it — live on the hosted database since 2026-10-01, e2e-tested there |
 | **Server Hardening** | Header/request/keep-alive timeouts, bounded bodies, graceful drain, non-root read-only container |
@@ -290,12 +295,14 @@ See [`.env.example`](.env.example) for the full list.
 equip-cert/
 ├── api/                          # Standalone serverless handlers (Vercel or the self-host adapter)
 │   ├── analyze.ts                #   AI image analysis — auth, rate limits, provider-abstracted
+│   ├── assist.ts                 #   In-app help assistant — read-only, free models, falls back to articles
+│   ├── billing/                  #   Checkout, customer portal, seat sync
 │   ├── dsar.ts                   #   Privacy / data subject request intake
-│   └── webhooks/stripe.ts        #   Stripe webhooks
+│   └── webhooks/stripe.ts        #   Stripe webhooks — the only writer of the plan
 ├── src/
 │   ├── app/                      # Static-export routes: landing, auth, /app, privacy, terms
 │   ├── components/               # auth, dashboard, technician, corrective, shared
-│   ├── content/                  # Policy and terms copy — single owner, rendered by pages
+│   ├── content/                  # Policy, terms, consent, help articles, assistant instructions — single owners
 │   └── lib/
 │       ├── config.ts             #   The ONLY reader of process.env (enforced by test:config)
 │       ├── plans.ts              #   The ONLY owner of prices and plan limits
@@ -307,7 +314,8 @@ equip-cert/
 ├── supabase/migrations/          # Schema, RLS, triggers, audit log
 ├── deploy/                       # Self-host server, Dockerfile, config, generated k8s manifests
 ├── load/k6/                      # Capacity plan with SLO thresholds
-├── e2e/ · unit/                  # Database authorization suite · unit tests
+├── e2e/                          # Hosted RLS suite · local integration (e2e/local) · browser flows (e2e/browser)
+├── unit/                         # Unit tests over src/lib and the API handlers
 └── docs/                         # Architecture, scaling, availability, roadmap, security, accessibility, compliance
 ```
 
@@ -368,12 +376,15 @@ npm run dev              # Development server
 npm run build            # Static export (includes the configuration-boundary gate)
 npm run build:server     # Bundle the self-host server
 npm test                 # Config boundary, schema, deploy-manifest drift, unit tests
+npm run test:unit        # Unit tests only
 npm run lint             # ESLint
-npm run test:rls         # Database authorization + audit log e2e (local stack only)
+npm run test:rls         # Database authorization + audit log e2e (a real Supabase project; never one with customer data)
 npm run test:local       # Tenancy, invitations, billing guard, e-sign consent (local Supabase stack)
 npm run test:browser     # Browser flows + axe accessibility, desktop and phone (local stack, Playwright)
 npm run test:load        # Origin throughput harness
 npm run test:production  # Check a deployment: health, readiness, headers, compiled backend
+npm run drill:restore    # Restore drill: dump, rebuild from migrations, restore, compare row counts
+node scripts/eval-assistant.mjs  # Help-assistant evaluation against the configured free models
 ```
 
 ---
@@ -383,8 +394,11 @@ npm run test:production  # Check a deployment: health, readiness, headers, compi
 | Document | Covers |
 |---|---|
 | [Architecture](docs/ARCHITECTURE.md) | Components, data model, flows, decisions and why |
+| [API reference](docs/API.md) | Every endpoint and database function, who may call it, how it fails |
+| [AI in EquipCert](docs/AI-ASSISTANT.md) | Equipment analysis and the help assistant: limits, privacy, evaluation |
+| [Testing](docs/TESTING.md) | Every test layer and its latest result |
 | [Scaling](docs/SCALING.md) | 10k / 100k / 1M concurrent — the arithmetic and the ladder |
-| [Availability](docs/AVAILABILITY.md) | Uptime targets, error budgets, failure modes, runbooks |
+| [Availability](docs/AVAILABILITY.md) | Uptime objectives (99 % → 99.99 %), error budgets, failure modes, recovery, runbooks |
 | [Roadmap](docs/ROADMAP.md) | From today to 1M+ users, with exit criteria |
 | [Security model](docs/SECURITY-MODEL.md) | Threats, controls, known gaps |
 | [Legal map](docs/compliance/README.md) | US and EU law — what applies and what is done |

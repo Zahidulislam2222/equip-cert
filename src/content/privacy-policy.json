@@ -8,13 +8,13 @@
     "generated at read time cannot support the one thing a date is for: showing what a data",
     "subject was told, and when.",
     "",
-    "PLACEHOLDERS IN SQUARE BRACKETS ARE DELIBERATE and were chosen by the project owner. This",
-    "is a demonstration product with no incorporated controller, and inventing a legal entity,",
+    "PLACEHOLDERS IN SQUARE BRACKETS ARE DELIBERATE and were chosen by the project owner. The",
+    "product has no incorporated controller yet, and inventing a legal entity,",
     "a postal address or a mailbox that does not exist would be worse than an obvious blank —",
     "GDPR Art. 13(1)(a) requires the controller's real identity, and a contact address that",
     "bounces is a failure to provide it, not a formality. Fill these in before going live."
   ],
-  "documentVersion": "2026-11-25",
+  "documentVersion": "2026-11-25.2",
   "effectiveDate": "2026-11-25",
 
   "controller": {
@@ -108,7 +108,8 @@
       "heading": "Who we share it with",
       "paragraphs": [
         "We do not sell personal data and we do not share it for cross-context behavioural advertising, as those terms are defined in the CCPA. We have never done so.",
-        "The current sub-processor list, with each one's role, location and transfer mechanism, is maintained at docs/compliance/sub-processors.md. In summary: a database and authentication platform, a vision model provider, an AI routing service for the optional help assistant (OpenRouter), a content platform for checklist templates, hosting, and a payment processor (currently in test mode only).",
+        "The current sub-processor list, with each one's role, location and transfer mechanism, is maintained at docs/compliance/sub-processors.md. In summary: a database and authentication platform, a vision model provider, an AI routing service for the optional help assistant (OpenRouter), a content platform for checklist templates, hosting, and a payment processor (live payments are not yet enabled, so no payment is taken).",
+        "Two public services without a processing agreement also receive limited data. When an inspection records its GPS position, the coordinates and the requesting IP address are sent to OpenStreetMap's Nominatim service to look up a street address. When you choose a password, the app checks it against known breaches with the Pwned Passwords service (Have I Been Pwned): only the first five characters of the password's SHA-1 hash and your IP address are sent, so neither the password nor its full hash leaves your device. Both are listed in docs/compliance/sub-processors.md.",
         "We also disclose inspection records to your own organisation's managers and administrators — that is the product working as intended — and to a regulator where we are legally required to, which is not something you can opt out of."
       ]
     },
@@ -153,7 +154,7 @@
           [
             "Consent records",
             "For as long as the consent is relied on, plus the limitation period afterwards",
-            "Art. 7(1) requires us to be able to demonstrate consent was given, which is impossible if the record is deleted with it"
+            "Art. 7(1) requires us to be able to show that consent was given, which is impossible if the record is deleted with it"
           ],
           [
             "Audit log entries",

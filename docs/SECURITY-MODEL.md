@@ -3,7 +3,7 @@
 What EquipCert AI protects, from whom, how, and where the protection is known to be weaker than
 it should be. To **report** a vulnerability, use [SECURITY.md](../SECURITY.md), not this file.
 
-**Reviewed:** 2026-09-24. **Certification:** none claimed — not SOC 2, not ISO 27001. This
+**Reviewed:** 2026-11-25. **Certification:** none claimed — not SOC 2, not ISO 27001. This
 document is the engineering basis such an audit would start from.
 
 ---
@@ -17,6 +17,8 @@ document is the engineering basis such an audit would start from.
 | Tenant boundary | Every customer's data shares one database | One organisation reads or writes another's records |
 | Accounts and roles | A manager or admin can change others' access | A technician promotes themself, or joins another tenant |
 | AI and email quotas | Paid or rate-capped upstream services | One caller exhausts them for everyone |
+| Billing state | The plan decides what an organisation may do | A forged or replayed event upgrades a free organisation, or downgrades a paying one |
+| Invitations | A link that grants membership | A leaked or reused link adds a stranger to an organisation |
 | Secrets | Service-role key bypasses row-level security | A client bundle or APK carrying it |
 
 ## 2. Trust boundaries
@@ -42,17 +44,21 @@ the request.
 | Spoofing | Credential stuffing on sign-in | Supabase Auth rate limits; client-side breached-password check (k-anonymity, the password never leaves the device) | `src/lib/password-safety.ts`; CAPTCHA **not yet on** — §5 |
 | **Tampering** | Editing a signed inspection | Trigger rejects `UPDATE`/`DELETE` on signed rows; the only permitted change is the exact shape GDPR erasure needs | `app.prevent_signed_inspection_change()` |
 | Tampering | Altering a queued offline submission | SHA-256 over canonical JSON; mismatches are rejected at sync | `src/lib/offline.ts`, `mobile/test/offline_integrity_test.dart` |
-| Tampering | Back-dating a record | Timestamps are `DEFAULT now()` in the database, never the device clock | `supabase/migrations/` |
-| **Repudiation** | "I never signed that" | Explicit consent to sign electronically on web and mobile (not yet stored as evidence — DEF-074); signature bound to the signed-in account; append-only audit log written by triggers (live since 2026-10-01) | `e2e/audit-log.test.mjs` |
-| **Information disclosure** | Reading another tenant's rows (OWASP API1, BOLA) | Row-level security on all 11 tables, `FORCE`d on the 10 holding tenant data, every client policy `TO authenticated`; cross-tenant e2e suite against a real Postgres | `e2e/rls-isolation.test.mjs` |
+| Tampering | Back-dating an inspection | A trigger sets `created_at` to the server's time on every inspection insert, whatever the client sends; a test posts a 2099 date and gets the server's time. Other tables still use an overridable `DEFAULT now()` (§5) | migration `20261125000300`, `e2e/local/` |
+| Tampering | Buying a plan with a forged redirect or a replayed event | The plan is written only by the Stripe webhook, verified over the exact raw bytes; a repeated delivery is detected and skipped; the plan is derived from all of the customer's subscriptions, so a late event cannot downgrade a paying organisation | `api/webhooks/stripe.ts`, `unit/stripe-webhook.test.mjs`, `unit/billing-reports.test.mjs` |
+| **Repudiation** | "I never signed that" | Explicit consent to sign electronically on web and mobile, stored with the consent text version and the server's time; the database refuses a signature without it, on insert and on update, and refuses a signature added to someone else's record; signature bound to the signed-in account; append-only audit log written by triggers | `e2e/audit-log.test.mjs`, `e2e/local/` |
+| **Information disclosure** | Reading another tenant's rows (OWASP API1, BOLA) | Row-level security on all 13 tables, `FORCE`d on the 12 holding tenant data, every client policy `TO authenticated`; cross-tenant e2e suite against a real Postgres | `e2e/rls-isolation.test.mjs` |
+| Information disclosure | The help assistant revealing another tenant's data, or obeying instructions hidden in data | Account summary read with the caller's own token, so RLS applies; retrieved text is wrapped and treated as data; no tools that act; evaluated with injection cases, including one hidden in an equipment name | `api/assist.ts`, `scripts/eval-assistant.mjs` — [AI-ASSISTANT.md](AI-ASSISTANT.md) |
 | Information disclosure | Guessing an evidence photo URL | Private bucket, tenant-scoped path, unguessable name, short-lived signed URLs, MIME allow-list | `supabase/migrations/*_storage.sql` |
 | Information disclosure | Service-role key in a client | One configuration owner; `NEXT_PUBLIC_` and `--dart-define` values are scanned by the build gate; the key never reaches `mobile/` | `scripts/check-config-boundary.mjs` |
 | Information disclosure | Session token theft on a phone | Refresh token in platform secure storage, never plain preferences | `mobile/test/secure_session_storage_test.dart` |
 | Information disclosure | Cleartext traffic from the app | Release manifest and Info.plist checked in CI **after** the build, because merged library manifests can reintroduce it | `.github/workflows/ci.yml` |
-| **Denial of service** | Draining the AI quota | Per-IP and per-account limits, keys hashed, shared across replicas, never fail open | `src/lib/rate-limit.ts`, `unit/rate-limit.test.mjs` |
+| **Denial of service** | Draining the AI quota | Per-IP and per-account limits, keys hashed, shared across replicas, never fail open; the assistant calls free models only, with bounded input, output and attempts | `src/lib/rate-limit.ts`, `unit/rate-limit.test.mjs`, `unit/assist.test.mjs` |
 | Denial of service | Slowloris / slow headers | Header, request and keep-alive timeouts; checking interval derived from them (a real defect fixed — Node's 30 s default made a 15 s timeout 15–45 s) | [AVAILABILITY.md](AVAILABILITY.md) §2.2 |
 | Denial of service | Oversized uploads and bodies | Bounded request bodies; client-side downscale; storage size cap | `deploy/server.ts`, `src/lib/capture.ts` |
 | **Elevation of privilege** | Technician sets their own role to admin | Column-level trigger guards on role and tenant changes | `app.guard_profile_privileges()` |
+| Elevation of privilege | Joining an organisation uninvited, or choosing one's own role | Membership only through `accept_invite`; tokens are single-use, expire, can be revoked, and only their hash is stored; the role comes from the invitation; the member limit is a trigger | migration `20261125000100`, `e2e/local/` |
+| Elevation of privilege | A non-admin starting checkout or opening the billing portal | Role read from the database on every request | `api/billing/` |
 | Elevation of privilege | Filing a privacy request into another tenant's queue | The request endpoint never reads `organization_id` from the body | `api/dsar.ts` |
 | Elevation of privilege | Bypassing plan limits from DevTools | Limits enforced by a database trigger generated from `plans.ts` | `npm run test:schema` |
 
@@ -84,8 +90,11 @@ does not report them as discoveries:
 | No absolute session lifetime on the free plan | A stolen refresh token stays valid until rotation catches it or the user signs out | Paid database plan feature |
 | Breached-password check is advisory | It runs on the client, so it warns rather than enforces | Server-side check on a paid plan |
 | Shared auth email sender | Capped at a few messages per hour; password resets stop under load | Custom SMTP (free to configure, needs a provider credential) |
-| Two public services without a DPA (geocoding receives coordinates; the breached-password check receives a hash prefix) | Documented, but not yet in the privacy policy; the geocoder also has a usage-policy ceiling | Self-hosted or contracted geocoder — [ROADMAP.md](ROADMAP.md) |
-| No web client unit or integration suite | Web regressions are caught by build, lint and e2e only | Roadmap item |
+| Two public services without a DPA (geocoding receives coordinates; the breached-password check receives a hash prefix) | Disclosed in the privacy policy and the sub-processor list; the geocoder also has a usage-policy ceiling | Self-hosted or contracted geocoder — [ROADMAP.md](ROADMAP.md) |
+| Help assistant routed through a service without a DPA | Users are told not to type personal details; free-model providers may retain prompts | Dedicated capped key and a DPA before real customer data — [AI-ASSISTANT.md](AI-ASSISTANT.md) §2.4 |
+| Offline integrity digest does not yet cover the signature image and consent version | A tampered queued signature would be caught by the server's consent rules, not by the digest | Extend the digest on both clients |
+| Server-set times cover inspections only | `corrective_actions` and `consent_records` accept a client-supplied time, so a consent record could carry a wrong time | Apply the same trigger to every evidence table — [ROADMAP.md](ROADMAP.md) Phase 1 |
+| E-sign consent evidence lives on the signer's profile | Removing a member deletes their consent record while their signed inspections stay; a withdrawal of consent cannot be recorded | Copy consent onto each signed record; add a withdrawal path — [ROADMAP.md](ROADMAP.md) Phase 1 |
 | No third-party penetration test | Controls are self-verified | Roadmap item, before the first enterprise customer |
 
 ## 6. Assurance in the pipeline
@@ -97,7 +106,8 @@ does not report them as discoveries:
 | Live gates | tenant-isolation e2e, migrations applied, generated types match, Supabase security and performance advisors |
 | Security workflow | gitleaks and semgrep on pushes to `main` and every pull request |
 | Dependencies | Dependabot for npm and GitHub Actions |
-| Production | synthetic check every 30 minutes: health, readiness, headers, and that the backend compiled into the shipped bundle is the intended one — built; activates with this push and will report failure until the hosted database is restored |
+| Production | synthetic check every 30 minutes: health, readiness, headers, and that the backend compiled into the shipped bundle is the intended one |
+| Integration and browser | local database built from the migrations; tenancy, invitation, billing and consent rules; Playwright flows under the production CSP |
 
 ## 7. Incident history
 
@@ -112,4 +122,11 @@ than a clean record would:
   by reading code.
 - **Rate-limit key without expiry.** A non-atomic sequence could leave a key with no TTL and a
   permanent 429. Repaired, with unit tests for the race.
+- **Signature blocked only in production.** A signature upload used `fetch()` on a `data:` URL,
+  which the production CSP correctly forbids; development had no CSP. Fixed by decoding locally,
+  and the browser suite now runs under the real policy.
+- **A consent rule that guarded only the insert.** A manager could add a signature to a
+  colleague's unsigned record by update. The rules now guard every path into the signed state.
+- **A timestamp anyone could write.** "Server-generated" was a column default, which a client
+  could override; it is now a trigger.
 - **Undisclosed third-party recipients.** Found by comparing the CSP with the sub-processor list: a geocoder and the breached-password API were reachable but unlisted.

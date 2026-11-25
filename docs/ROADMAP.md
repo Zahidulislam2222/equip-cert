@@ -1,8 +1,8 @@
 # Roadmap
 
-Where EquipCert AI is, and the path from here to 1M+ concurrent users at 99.95 % availability.
+Where EquipCert AI is, and the path from here to 1M+ concurrent users at 99.99 % availability.
 
-**Updated:** 2026-09-24.
+**Updated:** 2026-11-25.
 
 **How to read this.** Each phase ends with **exit criteria**, not a date. A phase is done when
 its criteria are *measured*, not when its code is written. Phases 3–5 are **design targets**:
@@ -14,42 +14,54 @@ deployment. Anything marked 💲 costs money and needs the owner's approval befo
  Phase 0        Phase 1            Phase 2            Phase 3           Phase 4           Phase 5
  SHIPPED   ──►  PRODUCTION    ──►  MOBILE STORES ──►  TIER 1       ──►  TIER 2       ──►  1M+
                 READINESS          + CRA              10k · 99.9 %      100k · 99.95 %    multi-region
+                (in progress)                                                               99.99 %
 ```
 
 ---
 
-## Phase 0 — Built ✅
+## Phase 0 — Built and live ✅
 
-In the repository, built and tested. "Built" is not "live": the items Phase 1 names are not yet running in production.
+Built and tested. The web app and API run at <https://equipcert.zahidul-islam.com> (release of 2026-11-25); the Flutter client is built in CI and not yet published to an app store (Phase 2).
 
 | Area | Delivered |
 |---|---|
-| Product | AI equipment identification, CMS-driven checklists, GPS and photo evidence, e-signature, immutable records, PDF reports, corrective actions, schedules, realtime notifications, roles |
-| Clients | Next.js 16 static web app; Flutter Android + iOS client with offline queue (423 tests) |
-| Data | 11-table schema, row-level security, trigger-written audit log (live since 2026-10-01), plan limits in the database, EU residency |
-| Compliance | GDPR records and procedures, consent with equal-prominence reject, Global Privacy Control, privacy request intake, AI Act Art. 50 disclosure and PDF marking — [legal map](compliance/README.md) |
-| Security | Threat model, hardened headers, private evidence storage, rate limits, secret boundary enforced in CI — [security model](SECURITY-MODEL.md) |
+| Product | AI equipment identification, checklists (CMS-driven, with built-in NFPA 10 and general lists), GPS and photo evidence, e-signature with stored consent, immutable records, PDF reports, corrective actions, schedules that advance automatically, realtime notifications, roles |
+| Teams | Invitations by single-use expiring link, member limits per plan, member removal that keeps signed records |
+| Insight | Dashboard, reports with trend chart and table alternative, per-inspector breakdown, CSV export |
+| Billing | Stripe Checkout, customer portal, per-user seats; the verified webhook alone sets the plan |
+| Help | In-app AI help assistant on web and mobile, disclosed as AI, read-only — [AI-ASSISTANT.md](AI-ASSISTANT.md) |
+| Clients | Next.js 16 static web app; Flutter Android + iOS client with offline queue (447 tests) |
+| Data | 13-table schema from 11 migrations, row-level security on every table, trigger-written audit log, server-set timestamps, plan limits in the database, EU residency |
+| Compliance | GDPR records and procedures, consent with equal-prominence reject, Global Privacy Control, privacy request intake, subject erasure, AI Act Art. 50 disclosure and PDF marking — [legal map](compliance/README.md) |
+| Security | Threat model, hardened headers, private evidence storage, rate limits, secret boundary and CSP-disclosure check enforced in CI — [security model](SECURITY-MODEL.md) |
 | Scale groundwork | Stateless origin, replica pool generator, Kubernetes manifests (HPA 3→50, PDB, NetworkPolicy), shared rate-limit store, read-replica routing, k6 capacity plan |
-| Operations | CI on pushes to `main` and every pull request (web, Android, iOS, live database gates), security workflow, Dependabot, production synthetic check, self-hosted deployment with hash-verified parity |
+| Quality | Unit, integration, browser-flow and accessibility suites; five CI jobs including the hosted database — [TESTING.md](TESTING.md) |
+| Operations | Production check on a schedule, daily database keep-alive, self-hosted deployment with hash-verified parity, a measured restore drill |
 
 ## Phase 1 — Production readiness
 
-Closes the gaps that matter before a paying customer, most of them owner actions rather than code.
+Closes the gaps that matter before the first paying customer. Most remaining items are account,
+contract or money decisions rather than code.
 
-| Item | Why |
+**Done since the September roadmap:** hosted database restored and kept active; audit log and
+subject erasure applied to the hosted database; e-signature consent stored as evidence (DEF-074);
+browser-flow and integration test suites; CI check that every CSP origin is a disclosed
+recipient; privacy policy names the geocoding and breached-password services (DEF-066); Stripe
+integration configured end to end; first restore drill.
+
+| Remaining item | Why |
 |---|---|
-| **Restore the hosted database the live site is built against** | Offline as of 2026-09-24 — the site loads but sign-in fails. Rebuild with the restored project's URL, then `npm run test:production` |
-| Apply the audit-log migration to the hosted database | Built and e2e-tested locally; until it is applied, the hosted audit log is not trigger-written and subject erasure is not available there |
-| Apply the auth configuration baseline (`npm run test:auth-config -- --apply`) | Auth settings are kept as code; the hosted project must match them |
+| Apply the auth configuration baseline (`npm run test:auth-config -- --apply`) | Auth settings are kept as code; the hosted project must match them, including the production redirect URL |
 | Custom SMTP for auth email | The shared sender allows a few messages per hour — password resets fail under any load |
 | CAPTCHA on sign-in and sign-up, mobile first | The control that actually stops credential stuffing ([SECURITY-MODEL.md](SECURITY-MODEL.md) §5) |
 | Counsel review of the privacy policy, terms and DPA; fill the operator's legal identity | Every legal document says "not reviewed by counsel" until this is done |
-| Name the geocoding and breached-password services in the privacy policy (DEF-066) | Disclosed in the third-party list; the policy text still lags |
-| Store e-signature consent as evidence (DEF-074) | Both clients ask for it before signing; neither records it, so it cannot be shown later |
-| Web component and integration tests | The web app has 104 unit tests over `src/lib` and the API handlers, plus database e2e; no component or browser-flow suite yet |
-| CI check that every CSP `connect-src` origin appears in the sub-processor list | The gap that let DEF-066 through |
-| Configure Stripe (test mode first) | Checkout and webhooks are built; not configured |
-| One restore drill from a backup | Until one is run, every recovery-time figure is a target without evidence |
+| Dedicated, spending-capped key and a DPA for the help assistant's model routing | Required before real customer data reaches the assistant |
+| 💲 Enable live payments | Requires live Stripe keys and the operator's business details; the code refuses live keys until explicitly allowed |
+| Scheduled database dumps **and** a backup of evidence files | The drill proved restore works; nothing schedules the dump yet, and photographs are not in it |
+| Scheduled disposal of records past their retention period | Retention is configured per organisation; nothing deletes expired records yet |
+| Extend the offline integrity digest to the signature and consent version | Named gap in [SECURITY-MODEL.md](SECURITY-MODEL.md) §5 |
+| Server-set times on every evidence table, not only inspections | Consent records and corrective actions still accept a client-supplied time |
+| Keep e-signature consent evidence after a member is removed, and record withdrawals | Consent is stored on the signer's profile; removing the member deletes it, while their signed records stay. Copying it onto each signed record closes this |
 
 **Exit criteria:** every Phase 1 item closed; `npm run test:production` green for 30 days.
 
@@ -61,7 +73,7 @@ Closes the gaps that matter before a paying customer, most of them owner actions
 | 💲 iOS signing (Apple Developer Program) and App Store release | CI proves iOS compiles; signing needs a paid account |
 | SBOM generation in CI for both clients | Needed for CRA vulnerability handling |
 | CRA reporting runbook — ENISA single reporting platform: 24 h early warning and 72 h notification; final report 14 days after a fix is available (exploited vulnerabilities) or one month after notification (severe incidents) | Reporting duties apply from 11 Sep 2026 once the app is on the EU market |
-| Accessibility audit against WCAG 2.1 AA, remediation, public conformance statement | ADA Title II customers must meet WCAG 2.1 AA by 2027–2028 — [ACCESSIBILITY.md](ACCESSIBILITY.md) |
+| Accessibility audit against WCAG 2.1 AA (2.2 where practical), remediation, public conformance statement | ADA Title II customers must meet WCAG 2.1 AA by 2027–2028 — [ACCESSIBILITY.md](ACCESSIBILITY.md) |
 
 **Exit criteria:** both apps in their stores; SBOM published per release; runbook rehearsed once.
 
@@ -111,7 +123,7 @@ place for each step:
 | SOC 2 Type II, SSO / SAML, customer-managed data retention | Audit log and retention columns exist |
 
 **Exit criteria:** `1m` profile passes with the environment named; multi-region failover
-rehearsed. Until then, 1M+ is a design target and is described as one.
+rehearsed; 30 days at ≥ 99.99 % per region on the external monitor. Until then, 1M+ is a design target and is described as one.
 
 ---
 

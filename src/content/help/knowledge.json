@@ -103,7 +103,7 @@
       "title": "Plans, limits and billing",
       "roles": ["all"],
       "keywords": ["plan", "pricing", "price", "upgrade", "pro", "free", "enterprise", "billing", "pay", "payment", "subscription", "limit", "cancel", "invoice", "card"],
-      "body": "Free: one user and 10 inspections a month, unsigned. Pro adds unlimited inspections, signatures, corrective actions, scheduling, team and reports, priced per user per month. Enterprise is arranged with sales. An administrator upgrades in Settings → Plan & billing through Stripe, and uses Manage billing to change seats, update the card or cancel. The plan changes only after Stripe confirms payment. This deployment runs Stripe in test mode, so no real money moves.",
+      "body": "Free: one user and 10 inspections a month, unsigned. Pro adds unlimited inspections, signatures, corrective actions, scheduling, team and reports, priced per user per month. Enterprise is arranged with sales. An administrator upgrades in Settings → Plan & billing through Stripe, and uses Manage billing to change seats, update the card or cancel. The plan changes only after Stripe confirms payment. Live payments are not yet enabled on this deployment, so no real money moves.",
       "link": "/app/settings"
     },
     {

@@ -1,5 +1,7 @@
 # Availability
 
+**Reviewed:** 2026-11-25.
+
 This document separates three things that are routinely blurred:
 
 | Label | Meaning |
@@ -21,10 +23,20 @@ steps that move each tier from *target* to *measured* are in [ROADMAP.md](ROADMA
 | 0 — current | 1 container, shared VPS, Supabase Free | **none claimed** | — | — |
 | 1 — redundant origin | ≥ 2 replicas behind Caddy `least_conn` + health checks, Supabase Pro | 99.9 % | 43 min 12 s | p95 < 500 ms for pages, p95 < 300 ms for API rejections |
 | 2 — orchestrated | Kubernetes manifests in `deploy/k8s/` (3–50 pods, PDB, HPA), multi-node, Supabase Pro + read replica | 99.95 % | 21 min 36 s | same |
+| 3 — multi-region | Tier 2 in at least two regions, tenant-sharded databases, EU data kept in the EU ([ROADMAP.md](ROADMAP.md) Phase 5) | 99.99 % | 4 min 19 s | same, measured per region |
 
-Error budget = (1 − SLO) × 30 days. 99 % would allow **7 h 12 min** a month of downtime — the
-figure the owner asked about is comfortably inside tier 1's target, but it is a *target* until a
-tier-1 deployment has run for a month and its monitor says so.
+Error budget = (1 − SLO) × 30 days.
+
+| Availability | Downtime allowed per 30 days | Per year |
+|---:|---:|---:|
+| 99 % | 7 h 12 min | 3 d 15 h 36 min |
+| 99.9 % | 43 min 12 s | 8 h 45 min 36 s |
+| 99.95 % | 21 min 36 s | 4 h 22 min 48 s |
+| 99.99 % | 4 min 19 s | 52 min 34 s |
+
+**99 % is the first public objective**, and it sits comfortably inside tier 1's design. It becomes
+a stated figure only after a tier-1 deployment has run for a full month and an external
+1-minute monitor confirms it. Each higher tier follows the same rule.
 
 **Ceiling you cannot engineer past from this repository:** the database provider's own
 availability. An origin at 99.99 % in front of a single-region managed database inherits that
@@ -35,7 +47,7 @@ quoting any end-to-end number.
 
 | Signal | Source | Status |
 |---|---|---|
-| External availability | `.github/workflows/production-check.yml` — every 30 min: site 200, `/healthz`, `/readyz`, headers, API method guard, compiled backend matches the intended one | **Built.** 30-minute resolution is too coarse for a 99.95 % budget; tier 2 needs a 1-minute external monitor |
+| External availability | `.github/workflows/production-check.yml` — scheduled every 30 min: site 200, `/healthz`, `/readyz`, headers, API method guard, compiled backend matches the intended one | **Running.** GitHub delays scheduled runs under load, so the real interval can be hours; that is fine for detecting a dead site, too coarse for an SLO. Tier 1 adds a 1-minute external monitor |
 | Latency / error rate under load | `load/k6/capacity-plan.js` thresholds (`http_req_failed < 1 %`, p95/p99) | **Built, `k6 inspect` valid. Not yet run against a tier-1 environment** |
 | Readiness under load | same script, `readiness` scenario, `checks > 99.9 %` | Built, not yet run |
 
@@ -75,7 +87,7 @@ The container stop grace (30 s) and the Kubernetes `terminationGracePeriodSecond
 from the same config and are asserted to exceed drain + grace, so the orchestrator never SIGKILLs
 mid-drain. `gen-deploy-artifacts.mjs` refuses to generate a config that breaks that ordering.
 
-**Evidence** — `tests/server_drain_test.mjs`, run in the production Node image (the Dockerfile's
+**Evidence** — a behavioural drain test, run in the production Node image (the Dockerfile's
 pinned digest), against the built `deploy/generated/server.cjs`, 2026-09-14: **13/13**.
 
 ```
@@ -123,6 +135,9 @@ sessions.
 | Database connection exhaustion | pooler errors under load | none | slow/failed reads and writes | R5 |
 | Shared rate-limit store down | `console.warn` fallback reason | per-process limiting | none; limits are per replica until it recovers | R6 |
 | AI provider outage or quota | `/api/analyze` 5xx | none | analysis unavailable; technician completes the checklist manually — the model only ever proposed | — |
+| Help-assistant models busy or down | timeout per model attempt | falls back to the closest help article | answers are articles instead of generated text; no error | — |
+| Stripe unavailable | `/api/billing/*` 502 | none; Stripe retries webhooks | checkout cannot start; plans and access are unchanged | — |
+| Content service (checklists) unavailable or not configured | — | built-in NFPA 10 and general checklists | none for extinguishers; other types use the general list | — |
 | Slow-headers / slowloris client | — | cut off at `headersTimeout` with 408 (verified) | none | — |
 | Free-tier database paused after 7 days idle | production-check | keepalive workflow prevents it | total outage of app data | R4 |
 | Wrong backend compiled into the bundle (DEF-058) | production-check compares the compiled Supabase host | none | login dead while the site looks up | R7 |
@@ -137,12 +152,12 @@ sessions.
 | 1 | ≤ 24 h (daily backups on a paid plan) | ≤ 1 h origin, database per provider restore time | provider backup schedule |
 | 2 | minutes, with point-in-time recovery enabled (paid add-on) | ≤ 15 min origin (redeploy manifests) | PITR + declarative manifests |
 
-The origin is rebuilt from Git plus `CREDENTIALS.md`; it holds no data. Every RPO above is
+The origin is rebuilt from Git plus the operator's private credential store; it holds no data. Every RPO above is
 therefore a database property.
 
 ### Restore drill — first run 2026-11-25 (measured, not a target)
 
-`node tests/with_db_password.mjs drill:restore` (`scripts/restore-drill.mjs`) dumps the live data,
+`npm run drill:restore` (`scripts/restore-drill.mjs`, with the database password supplied through the environment) dumps the live data,
 builds an empty database from `supabase/migrations/` alone, restores the dump into it and compares
 row counts table by table.
 
@@ -153,9 +168,9 @@ row counts table by table.
 | Data restored | 0.3 s |
 | **Total, dump to usable database** | **≈ 68 s** |
 
-Result: **every live row present** — 152 inspections, 28 organisations, 16 equipment, 56 audit
-entries, 12 profiles, 12 accounts, 3 plan rows; tables added by the unreleased migration were
-empty on both sides as expected.
+Result: **every live row present** in every table, compared count by count. (Tables added by a
+migration that was not yet applied to the hosted database at the time of the drill were empty on
+both sides; all 11 migrations have since been applied.)
 
 What this does and does not show:
 
@@ -180,12 +195,12 @@ What this does and does not show:
 `app.env` against `.env.example`. Do not raise `replicas` to hide a crash loop.
 
 **R2 — deploy.** `npm run deploy:gen -- --release <id>`, build, roll. Watch `/readyz` on each
-replica flip 503 → gone → new replica 200. Prove SHA-256 parity local vs live (global Rule 9).
-Roll back by redeploying the previous release id recorded in `CREDENTIALS.md`.
+replica flip 503 → gone → new replica 200. Prove SHA-256 parity local vs live for every deployed file.
+Roll back by redeploying the previous release id recorded in the operator's private release record.
 
 **R3 — origin down.** Confirm from outside (`npm run test:production`). SSH to the host, check
 Docker, disk, memory. If the host is gone, the origin is reproducible from Git: provision, restore
-`app.env` from `CREDENTIALS.md`, regenerate artifacts, deploy.
+`app.env` from the operator's private credential store, regenerate artifacts, deploy.
 
 **R4 — database down or paused.** Check the provider status page and the project dashboard. A
 paused free project is resumed from the dashboard. Do not "fix" by pointing the build at another
