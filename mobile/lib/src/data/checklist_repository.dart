@@ -35,7 +35,10 @@ enum ChecklistSource {
   /// Matched a Contentful entry for this equipment type.
   contentful,
 
-  /// Contentful was reachable but had nothing matching; its first entry was used.
+  /// Contentful was reachable but had no checklist for this equipment type; the built-in
+  /// NFPA 10 monthly checks are shown. (It used to show Contentful's FIRST entry — with the
+  /// content actually published, a fire extinguisher got the "Smartphone" checklist. E2E pass
+  /// 2026-11-25.)
   contentfulGeneric,
 
   /// Contentful was unreachable or unconfigured.
@@ -122,6 +125,28 @@ class ChecklistRepository {
     }
   }
 
+  /// Lower-case words, punctuation dropped: "Fire Extinguisher (CO2)" -> [fire, extinguisher, co2].
+  static List<String> _words(String s) => RegExp(
+    r'[\p{L}\p{N}]+',
+    unicode: true,
+  ).allMatches(s.toLowerCase()).map((RegExpMatch m) => m.group(0)!).toList();
+
+  /// Whether [needle]'s words appear consecutively, as whole words, in [hay].
+  static bool _containsWords(List<String> hay, List<String> needle) {
+    if (needle.isEmpty || needle.length > hay.length) return false;
+    for (int i = 0; i + needle.length <= hay.length; i++) {
+      bool all = true;
+      for (int j = 0; j < needle.length; j++) {
+        if (hay[i + j] != needle[j]) {
+          all = false;
+          break;
+        }
+      }
+      if (all) return true;
+    }
+    return false;
+  }
+
   /// Match an entry to the equipment, and read its questions.
   ///
   /// Exposed for testing. `forEquipment` reaches this only when `ContentfulConfig.isConfigured`
@@ -159,37 +184,39 @@ class ChecklistRepository {
     final Map<String, Map<String, Object?>> included = _includedEntries(
       decoded,
     );
-    final String needle = equipmentName.toLowerCase();
+    final List<String> needle = _words(equipmentName);
 
     Map<String, Object?>? matched;
     for (final Object? item in items) {
       if (item is! Map<String, Object?>) continue;
-      final String typeName = _linkedTypeName(item, included).toLowerCase();
+      final List<String> typeName = _words(_linkedTypeName(item, included));
       if (typeName.isEmpty) continue;
 
-      // Two-way containment, matching the web client: an entry named "Extinguisher" should
-      // match equipment called "CO2 Extinguisher 5kg", and vice versa.
-      if (needle.contains(typeName) || typeName.contains(needle)) {
+      // Two-way containment of WHOLE words, matching the web client (src/lib/checklists.ts): an
+      // entry named "Extinguisher" matches "CO2 Extinguisher 5kg" and vice versa, but "Car" does
+      // not match "Carbon dioxide extinguisher", and an empty name matches nothing (it used to
+      // match every entry). Fresh review 2026-11-25.
+      if (_containsWords(needle, typeName) ||
+          _containsWords(typeName, needle)) {
         matched = item;
         break;
       }
     }
 
-    final Map<String, Object?>? entry =
-        matched ??
-        (items.first is Map<String, Object?>
-            ? items.first as Map<String, Object?>
-            : null);
-    if (entry == null) return fallbackChecklist;
+    // No checklist for this type: the built-in checks, never an unrelated entry.
+    if (matched == null) {
+      return ChecklistResult(
+        entries: _toEntries(nfpa10MonthlyChecks),
+        source: ChecklistSource.contentfulGeneric,
+      );
+    }
 
-    final List<String> questions = _questions(entry);
+    final List<String> questions = _questions(matched);
     if (questions.isEmpty) return fallbackChecklist;
 
     return ChecklistResult(
       entries: _toEntries(questions),
-      source: matched != null
-          ? ChecklistSource.contentful
-          : ChecklistSource.contentfulGeneric,
+      source: ChecklistSource.contentful,
     );
   }
 

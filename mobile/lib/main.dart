@@ -12,9 +12,13 @@
 /// This is the same fail-closed-and-say-so decision `api/analyze.ts` makes after DEF-034.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthChangeEvent, AuthState;
 
 import 'src/app/router.dart';
 import 'src/data/supabase_service.dart';
@@ -62,6 +66,19 @@ class EquipCertApp extends ConsumerWidget {
     // happens to watch it. A shift's first action is often opening the app in signal after
     // capturing offline the day before.
     ref.watch(syncProvider);
+
+    // And when someone signs in: items queued while signed out (or by the person now signing back
+    // in) are only sent by a signed-in session. Matches the web client (fresh review 2026-11-25).
+    ref.listen<AsyncValue<AuthState>>(authStateProvider, (
+      AsyncValue<AuthState>? _,
+      AsyncValue<AuthState> next,
+    ) {
+      if (next.value?.event != AuthChangeEvent.signedIn) return;
+      final SyncState sync = ref.read(syncProvider);
+      if (sync.online && sync.hasPending) {
+        unawaited(ref.read(syncProvider.notifier).sync());
+      }
+    });
 
     return MaterialApp.router(
       title: 'EquipCert',

@@ -169,14 +169,20 @@ void main() {
       expect(r.source, ChecklistSource.contentful);
     });
 
-    test('a non-matching type still yields questions, marked generic', () {
-      // Better a real checklist labelled "generic" than no checklist. The UI states which.
+    test('a non-matching type gets the built-in checks, never another type\'s list', () {
+      // E2E pass 2026-11-25: the first CMS entry was "Smartphone"; an extinguisher got it.
       final ChecklistResult r = repo.parseResponse(
-        _payload(questions: <Object?>['Q1'], typeName: 'Fire Blanket'),
+        _payload(
+          questions: <Object?>['Is the screen ok?'],
+          typeName: 'Smartphone',
+        ),
         'Extinguisher',
       );
       expect(r.source, ChecklistSource.contentfulGeneric);
-      expect(r.entries, isNotEmpty);
+      expect(
+        r.entries.map((ChecklistEntry e) => e.question),
+        ChecklistRepository.nfpa10MonthlyChecks,
+      );
     });
 
     test('an entry with no equipmentType link is generic, not a crash', () {
@@ -185,6 +191,39 @@ void main() {
         'Extinguisher',
       );
       expect(r.source, ChecklistSource.contentfulGeneric);
+      expect(
+        r.entries.map((ChecklistEntry e) => e.question),
+        ChecklistRepository.nfpa10MonthlyChecks,
+      );
+    });
+
+    test('matching is by whole words: "Car" is not "Carbon dioxide"', () {
+      // Fresh review 2026-11-25: substring matching handed an extinguisher another type's list.
+      final ChecklistResult r = repo.parseResponse(
+        _payload(questions: <Object?>['Tyres inflated?'], typeName: 'Car'),
+        'Carbon dioxide extinguisher',
+      );
+      expect(r.source, ChecklistSource.contentfulGeneric);
+      expect(
+        r.entries.map((ChecklistEntry e) => e.question),
+        ChecklistRepository.nfpa10MonthlyChecks,
+      );
+    });
+
+    test('an empty equipment name matches no entry', () {
+      // It used to: every type name "contains" the empty string.
+      final ChecklistResult r = repo.parseResponse(
+        _payload(
+          questions: <Object?>['Is the screen ok?'],
+          typeName: 'Smartphone',
+        ),
+        '  ',
+      );
+      expect(r.source, ChecklistSource.contentfulGeneric);
+      expect(
+        r.entries.map((ChecklistEntry e) => e.question),
+        ChecklistRepository.nfpa10MonthlyChecks,
+      );
     });
 
     test(
@@ -230,7 +269,7 @@ void main() {
       expect(
         repo
             .parseResponse(
-              _payload(questions: <Object?>['Check the seal']),
+              _payload(typeName: 'x', questions: <Object?>['Check the seal']),
               'x',
             )
             .entries
@@ -245,6 +284,7 @@ void main() {
         repo
             .parseResponse(
               _payload(
+                typeName: 'x',
                 questions: <Object?>[
                   <String, Object?>{'text': 'Check the gauge'},
                 ],
@@ -263,6 +303,7 @@ void main() {
         repo
             .parseResponse(
               _payload(
+                typeName: 'x',
                 questions: <Object?>[
                   <String, Object?>{'question': 'Check the pin'},
                 ],
@@ -279,7 +320,11 @@ void main() {
     test('questions wrapped in an object are unwrapped', () {
       // Both shapes exist in this space; the web client carries the same branch.
       final ChecklistResult r = repo.parseResponse(
-        _payload(questions: <Object?>['Q1', 'Q2'], wrapQuestions: true),
+        _payload(
+          typeName: 'x',
+          questions: <Object?>['Q1', 'Q2'],
+          wrapQuestions: true,
+        ),
         'x',
       );
       expect(r.entries.length, 2);
@@ -287,7 +332,10 @@ void main() {
 
     test('blank and whitespace-only questions are dropped', () {
       final ChecklistResult r = repo.parseResponse(
-        _payload(questions: <Object?>['', '   ', 'Real question']),
+        _payload(
+          typeName: 'x',
+          questions: <Object?>['', '   ', 'Real question'],
+        ),
         'x',
       );
       expect(r.entries.length, 1);
@@ -297,7 +345,10 @@ void main() {
     test('question text is trimmed', () {
       expect(
         repo
-            .parseResponse(_payload(questions: <Object?>['  Padded  ']), 'x')
+            .parseResponse(
+              _payload(typeName: 'x', questions: <Object?>['  Padded  ']),
+              'x',
+            )
             .entries
             .single
             .question,
@@ -308,7 +359,7 @@ void main() {
     test('ids are renumbered 1-based after junk is dropped', () {
       // If a blank question left a gap, the ids would no longer match the rendered rows.
       final ChecklistResult r = repo.parseResponse(
-        _payload(questions: <Object?>['A', '', 'B', '   ', 'C']),
+        _payload(typeName: 'x', questions: <Object?>['A', '', 'B', '   ', 'C']),
         'x',
       );
       expect(r.entries.map((ChecklistEntry e) => e.id).toList(), <String>[
@@ -320,7 +371,7 @@ void main() {
 
     test('every parsed entry starts pending', () {
       final ChecklistResult r = repo.parseResponse(
-        _payload(questions: <Object?>['A', 'B']),
+        _payload(typeName: 'x', questions: <Object?>['A', 'B']),
         'x',
       );
       for (final ChecklistEntry e in r.entries) {
@@ -358,7 +409,12 @@ void main() {
           returnsNormally,
         );
         expect(r.entries, isNotEmpty);
-        expect(r.isFallback, isTrue);
+        // Unloadable or unmatched, the technician gets the standard checks — never an empty or
+        // unrelated list.
+        expect(
+          r.entries.map((ChecklistEntry e) => e.question),
+          ChecklistRepository.nfpa10MonthlyChecks,
+        );
       });
     });
   });

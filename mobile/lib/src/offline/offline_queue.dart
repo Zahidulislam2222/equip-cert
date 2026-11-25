@@ -345,6 +345,9 @@ class OfflineQueue {
     // light query without the evidence blobs. Filtering inside the batch would let held rows —
     // always the oldest — fill every batch and starve everyone else's work.
     final String? me = await _inspections.currentProfileId();
+    // Nobody signed in: nothing can be filed (every insert needs a session), and trying would spend
+    // each row's retry budget on failures that are not the row's fault. Wait for a sign-in.
+    if (me == null) return SyncReport.empty;
     final List<Map<String, Object?>> index = await db.query(
       _table,
       columns: <String>['id', 'payload', 'signature IS NOT NULL AS signed'],

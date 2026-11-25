@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { config, serverConfig } from '../../src/lib/config';
+import { errorText } from '../../src/lib/error-text';
 import { limiterFor } from '../../src/lib/server-rate-limit';
 import { clientIpOf, identifyCaller } from '../../src/lib/server-auth';
 import { stripeKeyAllowed } from '../../src/lib/billing';
@@ -56,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await syncSeats(stripe, service, org.id, billing.subscription);
     return res.status(200).json({ synced: true, seats: result?.to ?? null });
   } catch (err) {
-    console.error('Seat sync error:', err instanceof Error ? err.message : 'unknown error');
+    console.error('Seat sync error:', errorText(err));
     return res.status(502).json({ error: 'Could not update seats right now.' });
   }
 }

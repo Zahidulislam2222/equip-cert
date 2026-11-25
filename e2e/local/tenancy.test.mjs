@@ -342,3 +342,126 @@ describe('review findings 2026-11-25 (consent is personal, signer must consent, 
     assert.equal(error, null, error?.message);
   });
 });
+
+describe('E2E pass 2026-11-25 (member removal keeps signed records; inspections advance due dates)', () => {
+  async function joinedTech(label) {
+    const { data } = await owner.client.rpc('create_invite', { p_role: 'technician', p_valid_hours: 24 });
+    const u = await userWithSession(label, { full_name: `Tech ${label}` });
+    created.users.push(u.id);
+    const { error } = await u.client.rpc('accept_invite', { p_token: (Array.isArray(data) ? data[0] : data).token });
+    assert.equal(error, null, error?.message);
+    const { data: p } = await admin.from('profiles').select('id').eq('user_id', u.id).single();
+    return { ...u, profileId: p.id };
+  }
+  const signedBy = (t) => ({
+    organization_id: ownerOrg,
+    inspector_id: t.profileId,
+    inspector_name: `Tech ${t.label ?? 'x'}`,
+    equipment_name: `Removal ${RUN}`,
+    status: 'Safe',
+    signature_url: `${ownerOrg}/signature/${crypto.randomUUID()}.png`,
+  });
+
+  it('DEF-091: an admin can remove a member who signed inspections; the record keeps the name', async () => {
+    const t = await joinedTech('leaver');
+    assert.equal((await t.client.rpc('record_esign_consent', { p_version: '2026-11-25' })).error, null);
+    const { data: ins, error } = await t.client.from('inspections').insert({ ...signedBy(t), inspector_name: 'Tech leaver' }).select('id').single();
+    assert.equal(error, null, error?.message);
+
+    const del = await owner.client.from('profiles').delete({ count: 'exact' }).eq('id', t.profileId);
+    assert.equal(del.error, null, del.error?.message);
+    assert.equal(del.count, 1);
+
+    const { data: row } = await admin.from('inspections').select('inspector_id, inspector_name, signature_url').eq('id', ins.id).single();
+    assert.equal(row.inspector_id, null);
+    assert.equal(row.inspector_name, 'Tech leaver');
+    assert.ok(row.signature_url);
+  });
+
+  it('DEF-091: nulling the inspector of a signed record while the profile exists is still refused', async () => {
+    const t = await joinedTech('stayer');
+    await t.client.rpc('record_esign_consent', { p_version: '2026-11-25' });
+    const { data: ins } = await t.client.from('inspections').insert(signedBy(t)).select('id').single();
+    // As the organisation's admin (a manager the update policy admits), and asserting the RULE's
+    // message: a permission error on the helper function would also be "an error", for the wrong
+    // reason (fresh review 2026-11-25).
+    const { error } = await owner.client.from('inspections').update({ inspector_id: null }).eq('id', ins.id);
+    assert.notEqual(error, null, 'a signed record lost its inspector while the inspector still exists');
+    assert.match(error.message, /complete erasure|immutable/i, error.message);
+  });
+
+  it('the server sets created_at: a client cannot backdate or postdate a record, or push due dates', async () => {
+    const { data: eq } = await admin
+      .from('equipment')
+      .insert({ organization_id: ownerOrg, name: `Clock ${RUN}`, next_due_date: '2020-01-01' })
+      .select('id')
+      .single();
+    await admin.from('schedules').insert({ organization_id: ownerOrg, equipment_id: eq.id, frequency: 'monthly', next_due: '2020-01-01' });
+    const { data: ins, error } = await owner.client
+      .from('inspections')
+      .insert({ organization_id: ownerOrg, equipment_id: eq.id, equipment_name: `Clock ${RUN}`, inspector_name: 'Owner', status: 'Safe', created_at: '2099-01-01T00:00:00Z' })
+      .select('created_at')
+      .single();
+    assert.equal(error, null, error?.message);
+    assert.ok(Math.abs(new Date(ins.created_at) - Date.now()) < 10 * 60e3, `created_at is the server's (got ${ins.created_at})`);
+    const { data: e } = await admin.from('equipment').select('next_due_date').eq('id', eq.id).single();
+    assert.ok(e.next_due_date < '2030-01-01', `due date not pushed by the client (got ${e.next_due_date})`);
+  });
+
+  it('an unsigned inspection cannot be moved onto another organisation’s equipment later', async () => {
+    const other = await userWithSession('eqmove', { full_name: 'Other', org_name: `Move ${RUN}` });
+    created.users.push(other.id);
+    const { data: otherOrg } = await other.client.rpc('provision_account');
+    created.orgs.push(otherOrg);
+    const { data: theirs } = await admin.from('equipment').insert({ organization_id: otherOrg, name: 'Theirs' }).select('id').single();
+    const { data: ins } = await owner.client
+      .from('inspections')
+      .insert({ organization_id: ownerOrg, equipment_name: 'Unlinked', inspector_name: 'Owner', status: 'Safe' })
+      .select('id')
+      .single();
+    const { error } = await owner.client.from('inspections').update({ equipment_id: theirs.id }).eq('id', ins.id);
+    assert.notEqual(error, null, 'an unsigned record was pointed at another tenant’s equipment');
+    assert.match(error.message, /does not belong/i, error.message);
+  });
+
+  it('DEF-092: an inspection of scheduled equipment advances the schedule and the equipment', async () => {
+    const { data: eq } = await admin
+      .from('equipment')
+      .insert({ organization_id: ownerOrg, name: `Due ${RUN}`, next_due_date: '2020-01-01' })
+      .select('id')
+      .single();
+    await admin.from('schedules').insert([
+      { organization_id: ownerOrg, equipment_id: eq.id, frequency: 'monthly', next_due: '2020-01-01' },
+      { organization_id: ownerOrg, equipment_id: eq.id, frequency: 'annually', next_due: '2020-01-01' },
+    ]);
+    const { error } = await owner.client
+      .from('inspections')
+      .insert({ organization_id: ownerOrg, equipment_id: eq.id, equipment_name: `Due ${RUN}`, inspector_name: 'Owner', status: 'Safe' });
+    assert.equal(error, null, error?.message);
+
+    const today = new Date();
+    const monthly = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate())).toISOString().slice(0, 10);
+    const { data: e } = await admin.from('equipment').select('next_due_date, last_inspection_date').eq('id', eq.id).single();
+    assert.ok(e.last_inspection_date, 'last inspection stamped');
+    assert.ok(e.next_due_date > '2026-01-01', `next due advanced (got ${e.next_due_date})`);
+    const { data: s } = await admin.from('schedules').select('frequency, next_due, last_completed').eq('equipment_id', eq.id).order('frequency');
+    const byFreq = Object.fromEntries(s.map((r) => [r.frequency, r]));
+    assert.ok(byFreq.monthly.last_completed);
+    assert.equal(e.next_due_date, byFreq.monthly.next_due, 'equipment is due at its earliest schedule');
+    assert.ok(Math.abs(new Date(byFreq.monthly.next_due) - new Date(monthly)) <= 3 * 86400e3, 'monthly is about a month out');
+    assert.ok(byFreq.annually.next_due > byFreq.monthly.next_due);
+  });
+
+  it('DEF-092: an inspection cannot name another organisation’s equipment', async () => {
+    const other = await userWithSession('eqother', { full_name: 'Other', org_name: `Other ${RUN}` });
+    created.users.push(other.id);
+    const { data: otherOrg } = await other.client.rpc('provision_account');
+    created.orgs.push(otherOrg);
+    const { data: eq } = await admin.from('equipment').insert({ organization_id: otherOrg, name: 'Not yours' }).select('id').single();
+    const { error } = await owner.client
+      .from('inspections')
+      .insert({ organization_id: ownerOrg, equipment_id: eq.id, equipment_name: 'Not yours', inspector_name: 'Owner', status: 'Safe' });
+    assert.notEqual(error, null, 'filed an inspection against another tenant’s equipment');
+    assert.match(error.message, /does not belong/i, error.message);
+  });
+});

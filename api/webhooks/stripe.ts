@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { config, serverConfig } from '../../src/lib/config';
+import { errorText } from '../../src/lib/error-text';
 import { readRawBody, RawBodyUnavailableError } from '../../src/lib/webhook-body';
 import { asOrganizationId, HANDLED_EVENTS, planFromSubscription, stripeKeyAllowed } from '../../src/lib/billing';
 import { currentBilling, syncSeats } from '../../src/lib/server-billing';
@@ -54,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: unknown) {
     // The message only: Stripe's error object carries the whole payload, customer data included.
-    console.error('Webhook signature verification failed:', err instanceof Error ? err.message : 'unknown error');
+    console.error('Webhook signature verification failed:', errorText(err));
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
@@ -156,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         await syncSeats(stripe, supabase, organizationId, governing);
       } catch (err) {
-        console.error(`Stripe seat sync failed for ${organizationId}:`, err instanceof Error ? err.message : 'unknown error');
+        console.error(`Stripe seat sync failed for ${organizationId}:`, errorText(err));
       }
     }
 
@@ -169,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ received: true, plan });
   } catch (err) {
     // A 500 makes Stripe retry with backoff, which is right for a transient database or API fault.
-    console.error('Webhook processing error:', err instanceof Error ? err.message : 'unknown error');
+    console.error('Webhook processing error:', errorText(err));
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

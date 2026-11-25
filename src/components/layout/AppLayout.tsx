@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/shared/NotificationBell';
-import { canAccess } from '@/lib/stripe';
+import { canAccess } from '@/lib/plans';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 

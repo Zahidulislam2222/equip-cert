@@ -79,6 +79,10 @@ class SyncController extends Notifier<SyncState> {
       state = state.copyWith(online: true);
     }
     await refreshPending();
+    // The state starts "online", so an app opened WITH a connection never saw an offline→online
+    // transition and never sent what was queued in an earlier session (E2E pass 2026-11-25 — the
+    // web client had the same gap). Drain once at start-up; sync() ignores re-entrant calls.
+    if (state.online && state.pending > 0) unawaited(sync());
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> results) {

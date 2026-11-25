@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Wifi, WifiOff, CloudUpload, Loader2 } from 'lucide-react';
 import { getQueueCount, syncQueuedSubmissions } from '@/lib/offline';
 import { supabase } from '@/lib/supabase';
@@ -25,6 +25,7 @@ export function OfflineIndicator() {
   const isOnline = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
   const [queueCount, setQueueCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const syncing = useRef(false);
 
   const checkQueue = async () => {
     try {
@@ -35,67 +36,88 @@ export function OfflineIndicator() {
     }
   };
 
-  const syncQueue = async () => {
+  /** One pass over the queue, as the signed-in user. */
+  const drain = async (automatic: boolean) => {
+    // Whose session is sending. A signed record may only be filed — and consent only recorded
+    // — by the person who signed it: on a shared device, the next person to sign in must not
+    // have consent stamped against their account for a colleague's signature. Such items stay
+    // queued until the signer signs in here again. The database enforces the same rule.
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      if (!automatic) toast.error('Sign in to send queued inspections.');
+      return;
+    }
+    const { data: me } = await supabase.from('profiles').select('id').eq('user_id', auth.user.id).maybeSingle();
+    const notMine = (item: { payload: { inspector_id?: string | null }; signatureBlob?: Blob | null }) =>
+      !!item.signatureBlob && item.payload.inspector_id !== (me?.id ?? null);
+
+    const result = await syncQueuedSubmissions(async ({ payload, photoBlob, signatureBlob, esignConsentVersion }) => {
+      // The queued payload already carries the organization it was recorded against. Using
+      // it — rather than the session's current organization — keeps a submission filed
+      // under the tenant it was captured for, even if the user has since been moved.
+      // The queue is untyped storage (IndexedDB, Record<string, unknown>), so narrow rather
+      // than assert — a malformed queued row must fail this one submission, not the sync.
+      const orgId =
+        typeof payload.organization_id === 'string' ? payload.organization_id : null;
+      if (!orgId) throw new Error('Queued submission has no organization; cannot sync.');
+
+      // Consent first: a signed record must never reach the database before the evidence that
+      // the signer agreed to sign electronically (DEF-074).
+      if (esignConsentVersion) await recordEsignConsent(esignConsentVersion);
+
+      let uploadedImagePath: string | null = null;
+      if (photoBlob) {
+        uploadedImagePath = await uploadEvidence('inspection', orgId, photoBlob);
+      }
+      let uploadedSignaturePath: string | null = null;
+      if (signatureBlob) {
+        uploadedSignaturePath = await uploadEvidence('signature', orgId, signatureBlob);
+      }
+
+      const { error } = await supabase.from('inspections').insert([{
+        ...payload,
+        photo_url: uploadedImagePath ?? payload.photo_url,
+        signature_url: uploadedSignaturePath ?? payload.signature_url,
+      }]);
+      if (error) throw error;
+    }, notMine);
+
+    if (result.synced > 0) {
+      toast.success(`Synced ${result.synced} inspection${result.synced > 1 ? 's' : ''}`);
+    }
+    if (result.held > 0) {
+      toast.warning(
+        `${result.held} signed inspection${result.held > 1 ? 's are' : ' is'} waiting for the person who signed to sign in on this device.`
+      );
+    }
+    if (result.failed > 0) {
+      toast.error(`${result.failed} submission${result.failed > 1 ? 's' : ''} failed to sync`);
+    }
+  };
+
+  /** `automatic`: started by the app, not the user — stay quiet if nobody is signed in yet. */
+  const syncQueue = async (automatic = false) => {
+    // One sync at a time: page load, sign-in, reconnect and the button can all fire together, and
+    // two overlapping runs would read the same queued item and file it twice.
+    if (syncing.current) return;
+    syncing.current = true;
     setIsSyncing(true);
     try {
-      // Whose session is sending. A signed record may only be filed — and consent only recorded
-      // — by the person who signed it: on a shared device, the next person to sign in must not
-      // have consent stamped against their account for a colleague's signature. Such items stay
-      // queued until the signer signs in here again. The database enforces the same rule.
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) {
-        toast.error('Sign in to send queued inspections.');
-        return;
-      }
-      const { data: me } = await supabase.from('profiles').select('id').eq('user_id', auth.user.id).maybeSingle();
-      const notMine = (item: { payload: { inspector_id?: string | null }; signatureBlob?: Blob | null }) =>
-        !!item.signatureBlob && item.payload.inspector_id !== (me?.id ?? null);
-
-      const result = await syncQueuedSubmissions(async ({ payload, photoBlob, signatureBlob, esignConsentVersion }) => {
-        // The queued payload already carries the organization it was recorded against. Using
-        // it — rather than the session's current organization — keeps a submission filed
-        // under the tenant it was captured for, even if the user has since been moved.
-        // The queue is untyped storage (IndexedDB, Record<string, unknown>), so narrow rather
-        // than assert — a malformed queued row must fail this one submission, not the sync.
-        const orgId =
-          typeof payload.organization_id === 'string' ? payload.organization_id : null;
-        if (!orgId) throw new Error('Queued submission has no organization; cannot sync.');
-
-        // Consent first: a signed record must never reach the database before the evidence that
-        // the signer agreed to sign electronically (DEF-074).
-        if (esignConsentVersion) await recordEsignConsent(esignConsentVersion);
-
-        let uploadedImagePath: string | null = null;
-        if (photoBlob) {
-          uploadedImagePath = await uploadEvidence('inspection', orgId, photoBlob);
-        }
-        let uploadedSignaturePath: string | null = null;
-        if (signatureBlob) {
-          uploadedSignaturePath = await uploadEvidence('signature', orgId, signatureBlob);
-        }
-
-        const { error } = await supabase.from('inspections').insert([{
-          ...payload,
-          photo_url: uploadedImagePath ?? payload.photo_url,
-          signature_url: uploadedSignaturePath ?? payload.signature_url,
-        }]);
-        if (error) throw error;
-      }, notMine);
-
-      if (result.synced > 0) {
-        toast.success(`Synced ${result.synced} inspection${result.synced > 1 ? 's' : ''}`);
-      }
-      if (result.held > 0) {
-        toast.warning(
-          `${result.held} signed inspection${result.held > 1 ? 's are' : ' is'} waiting for the person who signed to sign in on this device.`
-        );
-      }
-      if (result.failed > 0) {
-        toast.error(`${result.failed} submission${result.failed > 1 ? 's' : ''} failed to sync`);
+      // One sync across TABS as well: the ref above only covers this tab, and every open tab now
+      // syncs on load, so two tabs could read the same queued item and file it twice (fresh review
+      // 2026-11-25). The lock is held for the whole drain; a tab that cannot take it skips.
+      const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+      if (locks) {
+        await locks.request('equipcert-offline-sync', { ifAvailable: true }, async (lock) => {
+          if (lock) await drain(automatic);
+        });
+      } else {
+        await drain(automatic);
       }
     } catch {
       toast.error('Sync failed');
     } finally {
+      syncing.current = false;
       setIsSyncing(false);
       checkQueue();
     }
@@ -115,16 +137,34 @@ export function OfflineIndicator() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Check queue on mount — state is set in the promise callback, not the effect body.
+    // Check the queue on mount, and SEND it if we are already online. Syncing only on the
+    // 'online' event meant an inspection saved offline was never sent if the app was closed and
+    // reopened with a connection — it sat behind a "Sync now" button nobody pressed (E2E pass
+    // 2026-11-25). State is set in the promise callback, not the effect body.
     getQueueCount()
-      .then(setQueueCount)
+      .then((count) => {
+        setQueueCount(count);
+        if (count > 0 && navigator.onLine) syncQueue(true);
+      })
       .catch(() => {
         // IndexedDB not available
       });
 
+    // This component lives in the root layout and mounts once — usually on the sign-in page. A
+    // sign-in is a client-side navigation, so also send the queue when someone signs in.
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== 'SIGNED_IN' || !navigator.onLine) return;
+      getQueueCount()
+        .then((count) => {
+          if (count > 0) syncQueue(true);
+        })
+        .catch(() => {});
+    });
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      authListener.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- register once per mount
   }, []);
@@ -161,7 +201,7 @@ export function OfflineIndicator() {
             )}
             <span>{isSyncing ? 'Syncing...' : `${queueCount} pending`}</span>
             {!isSyncing && (
-              <button onClick={syncQueue} className="underline text-xs ml-1">
+              <button onClick={() => syncQueue()} className="underline text-xs ml-1">
                 Sync now
               </button>
             )}

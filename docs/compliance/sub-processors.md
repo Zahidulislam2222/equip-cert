@@ -71,11 +71,10 @@ missing — the policy named Nominatim while this document did not.
 | `https://*.supabase.co` | Supabase |
 | `wss://*.supabase.co` | Supabase (realtime) |
 | `https://cdn.contentful.com` | Contentful |
-| `https://*.stripe.com` | Stripe |
 | `https://nominatim.openstreetmap.org` | OpenStreetMap Foundation — Nominatim |
 | `https://api.pwnedpasswords.com` | Have I Been Pwned — Pwned Passwords |
 
-Server-side calls — the AI provider from `/api/analyze`, OpenRouter from `/api/assist`, Stripe from the billing handlers, Supabase from the API handlers — are
+Server-side calls — the AI provider from `/api/analyze`, OpenRouter from `/api/assist`, Stripe from the billing handlers (checkout and the billing portal are full-page redirects to Stripe, not connections from the app; the browser no longer loads Stripe.js — DEF-095), Supabase from the API handlers — are
 not in the browser's policy and are covered by the sub-processor table above.
 
 ---

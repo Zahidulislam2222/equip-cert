@@ -204,15 +204,36 @@ void main() {
   });
 
   group('startup', () {
-    test('it reads the pending count without being asked to sync', () async {
-      final _FakeQueue queue = _FakeQueue()..pending = 4;
+    test(
+      'opened online with work queued, it reads the count and drains once',
+      () async {
+        // main.dart reads syncProvider at start-up so the queue drains when a shift opens the app
+        // in signal after capturing offline. The controller used to wait for an offline->online
+        // transition that never comes when the app starts online (E2E pass 2026-11-25).
+        final _FakeQueue queue = _FakeQueue()..pending = 4;
+        final ProviderContainer c = _container(queue);
+
+        c.read(syncProvider);
+        for (int i = 0; i < 6; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        // The fake never removes items, so the count re-read after the drain is still 4: read once
+        // at start-up and once after the drain.
+        expect(queue.syncCalls, 1);
+        expect(queue.pendingCountCalls, 2);
+        expect(c.read(syncProvider).pending, 4);
+      },
+    );
+
+    test('opened online with nothing queued, it does not sync', () async {
+      final _FakeQueue queue = _FakeQueue()..pending = 0;
       final ProviderContainer c = _container(queue);
 
       c.read(syncProvider);
       await Future<void>.delayed(Duration.zero);
 
-      expect(c.read(syncProvider).pending, 4);
-      expect(queue.syncCalls, 0, reason: 'startup must not drain the queue');
+      expect(queue.syncCalls, 0);
     });
 
     test(

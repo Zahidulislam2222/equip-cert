@@ -57,10 +57,8 @@ export const config = {
     accessToken: process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN!,
   },
 
-  // Stripe (client-side key only — secret key stays in Vercel functions)
-  stripe: {
-    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
-  },
+  // No client-side Stripe key: checkout and the portal are server-created redirects, so the
+  // browser never loads Stripe.js (it used to, on every app page, and the CSP blocked it).
 
   // Password safety. Supabase's own leaked-password protection is a Pro-plan feature, so the
   // same check runs against the same upstream corpus via the free k-anonymity range API.
@@ -130,6 +128,12 @@ export const config = {
     // Hard ceiling on rows a single report reads, so a large tenant cannot pull its whole history
     // into one browser tab.
     maxRows: intEnv(process.env.NEXT_PUBLIC_REPORTS_MAX_ROWS, 5_000),
+  },
+
+  dashboard: {
+    // The dashboard's "Recent inspections" table — newest first, bounded (it used to read every
+    // inspection the organisation had ever filed).
+    recentRows: intEnv(process.env.NEXT_PUBLIC_DASHBOARD_RECENT_ROWS, 50),
   },
 } as const;
 

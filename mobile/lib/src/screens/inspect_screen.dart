@@ -686,7 +686,7 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
         const SizedBox(height: 6),
         Text(switch (_checklistSource) {
           ChecklistSource.contentful => 'Checklist for this equipment type.',
-          ChecklistSource.contentfulGeneric => 'No checklist is configured for this equipment type — showing the general one.',
+          ChecklistSource.contentfulGeneric => 'No checklist is configured for this equipment type — showing the standard NFPA 10 monthly checks.',
           ChecklistSource.fallback => 'Standard NFPA 10 monthly checks. The configured checklist could not be loaded.',
         }, style: text.bodySmall?.copyWith(color: c.mutedForeground)),
         const SizedBox(height: 12),

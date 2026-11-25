@@ -92,7 +92,7 @@ export function CorrectiveActionForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg bg-card rounded-t-2xl sm:rounded-lg shadow-elevated border border-border max-h-[90vh] overflow-auto">
+      <div role="dialog" aria-modal="true" aria-labelledby="corrective-title" className="w-full max-w-lg bg-card rounded-t-2xl sm:rounded-lg shadow-elevated border border-border max-h-[90vh] overflow-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
@@ -100,11 +100,11 @@ export function CorrectiveActionForm({
               <AlertTriangle className="h-5 w-5 text-destructive" />
             </div>
             <div>
-              <h3 className="font-semibold font-display text-foreground">Report Issue</h3>
+              <h3 id="corrective-title" className="font-semibold font-display text-foreground">Report Issue</h3>
               <p className="text-xs text-muted-foreground">Failed checklist item</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-muted transition-colors">
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-2 hover:bg-muted transition-colors">
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
@@ -123,12 +123,13 @@ export function CorrectiveActionForm({
 
           {/* Severity */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Severity</label>
+            <p className="text-sm font-medium text-foreground">Severity</p>
             <div className="flex gap-2">
               {severityOptions.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
+                  aria-pressed={severity === opt.value}
                   onClick={() => setSeverity(opt.value)}
                   className={cn(
                     'flex-1 rounded-lg border-2 py-2.5 text-sm font-medium transition-all',
@@ -143,8 +144,9 @@ export function CorrectiveActionForm({
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Description *</label>
+            <label htmlFor="corrective-description" className="text-sm font-medium text-foreground">Description *</label>
             <textarea
+              id="corrective-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
@@ -156,7 +158,7 @@ export function CorrectiveActionForm({
 
           {/* Photo Evidence */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Photo Evidence</label>
+            <p className="text-sm font-medium text-foreground">Photo Evidence</p>
             {photoUrl ? (
               <div className="relative rounded-lg overflow-hidden border border-border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -232,6 +232,19 @@ async function resolveStaticFile(pathname: string): Promise<string | null> {
       ? [join(base, 'index.html')]
       : [base, `${base}.html`, join(base, 'index.html')];
 
+  // Segment prefetches: the client asks for `__next.app.dashboard.__PAGE__.txt` (Next's
+  // convertSegmentPathToStaticExportFilename joins the segment path with dots), but `next build`
+  // writes it as `__next.app/dashboard/__PAGE__.txt`. Without this every client-side prefetch 404s
+  // and navigation falls back to full page loads (E2E pass 2026-11-25). Segment names never contain
+  // dots (dynamic values are base64url-encoded), so every dot after the first is a separator.
+  const segment = /^(.*\/)__next\.([^/]+)\.txt$/.exec(safe.replace(/\\/g, '/'));
+  if (segment) {
+    // Splitting on dots cannot produce "..", and the prefix was already checked above; the mapped
+    // path is checked against the root anyway, so a later edit to the pattern cannot open a way out.
+    const mapped = join(STATIC_ROOT, `${segment[1]}__next.${segment[2].split('.').join('/')}.txt`);
+    if (mapped.startsWith(STATIC_ROOT + sep)) candidates.push(mapped);
+  }
+
   for (const candidate of candidates) {
     try {
       const info = await stat(candidate);

@@ -24,7 +24,12 @@ const rowVariants = {
 
 // Row shape from the generated schema; see src/lib/db.ts. checklist_data is jsonb, so it
 // arrives as Json and is parsed at the point of use rather than assumed to be an array.
-export function InspectionsTable() {
+/**
+ * `limit`: the dashboard shows only the newest rows (config.dashboard.recentRows). The Inspections
+ * page passes none — it is where every certificate is opened, so it must not silently stop at 50.
+ * (It is still capped by the API's max-rows setting; paging is a known gap.)
+ */
+export function InspectionsTable({ limit }: { limit?: number } = {}) {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<number | null>(null); // Track which row is downloading
@@ -33,10 +38,11 @@ export function InspectionsTable() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data, error } = await supabase
+        const query = supabase
           .from("inspections")
           .select("*")
           .order("created_at", { ascending: false }); // Newest first
+        const { data, error } = await (limit ? query.limit(limit) : query);
 
         if (error) throw error;
         if (data) setInspections(data);
@@ -48,7 +54,7 @@ export function InspectionsTable() {
     };
 
     fetchData();
-  }, []);
+  }, [limit]);
 
   /**
    * Open one stored photo in a new tab.

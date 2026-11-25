@@ -1,0 +1,31 @@
+{
+  "version": "2026-11-25",
+  "note": "Built-in checklists, used when the CMS (Contentful) has no checklist for the equipment's type. Wording is our own summary of the monthly-inspection items; it is guidance for the technician, not a reproduction of the standard. A CMS checklist for the same type always takes precedence.",
+  "types": [
+    {
+      "id": "fire-extinguisher",
+      "match": ["fire extinguisher", "extinguisher"],
+      "basis": "NFPA 10, monthly inspection",
+      "questions": [
+        "In its designated place, mounted, and not obstructed or hidden",
+        "Operating instructions on the nameplate are legible and face outward",
+        "Safety pin and tamper seal are in place and unbroken",
+        "Full, judged by weighing or hefting",
+        "No visible damage, corrosion, leakage or clogged nozzle",
+        "Pressure gauge reads in the operable (green) range",
+        "Inspection tag is present and up to date"
+      ]
+    }
+  ],
+  "fallback": {
+    "id": "general",
+    "basis": "General condition check",
+    "questions": [
+      "Equipment is where it should be and accessible",
+      "Identification label or serial number is legible",
+      "No visible damage, wear, corrosion or leakage",
+      "Safety devices and guards are present and intact",
+      "Safe to use until the next scheduled inspection"
+    ]
+  }
+}

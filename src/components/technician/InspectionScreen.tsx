@@ -1,7 +1,7 @@
 'use client';
 
 import { dataUrlToBlob } from '@/lib/data-url';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import { recordEsignConsent } from "@/lib/auth";
 import esignConsent from "@/content/esign-consent.json";
 import { toast } from "sonner";
 import { canAccess } from "@/lib/plans";
+import { pickChecklist, type CmsChecklistEntry } from "@/lib/checklists";
 
 interface InspectionScreenProps {
   isAiMode: boolean;
@@ -45,6 +46,11 @@ interface InspectionScreenProps {
 // the generated type is `Json`, whose object arm is an index signature. TypeScript treats a
 // type alias as having an implicit index signature and an interface as not having one, so an
 // `interface` here is rejected on assignment to Json even though the shape is identical.
+type RegisteredEquipment = { id: string; name: string; type: string | null };
+
+/** Select value for an asset that is not in the register yet (filed by name, unlinked). */
+const UNREGISTERED = "__unregistered__";
+
 type ChecklistItem = {
   id: string;
   question: string;
@@ -55,8 +61,14 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
   const { profile, organization } = useAuth();
 
   // State
-  const [equipmentName, setEquipmentName] = useState<string>(isAiMode ? "Unknown Equipment" : "Caterpillar X500");
+  const [equipmentName, setEquipmentName] = useState<string>(isAiMode ? "Unknown Equipment" : "");
+  // Manual mode inspects a REGISTERED asset, so the record links to it and the database can
+  // advance its due dates (DEF-092). It used to file every manual inspection as a hard-coded
+  // "Caterpillar X500" with no link to anything.
+  const [registry, setRegistry] = useState<RegisteredEquipment[]>([]);
+  const [equipmentId, setEquipmentId] = useState<string>("");
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [checklistBasis, setChecklistBasis] = useState<string>("");
 
   // Photo State
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -66,116 +78,113 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
   const [location, setLocation] = useState<LocationData | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
 
-  // Corrective Action State
-  const [correctiveItem, setCorrectiveItem] = useState<ChecklistItem | null>(null);
+  // Corrective actions are raised AFTER the inspection exists (they reference its id), one per
+  // failed item. This used to open only if the screen was still mounted after submit — it never
+  // was, so no corrective action could be raised from an inspection (DEF-093).
+  const [pendingFailures, setPendingFailures] = useState<ChecklistItem[]>([]);
   const [submittedInspectionId, setSubmittedInspectionId] = useState<number | null>(null);
 
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(!isAiMode);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // AI Act Art. 50 provenance for this inspection. Null means no AI was involved,
   // which is a real state on the manual path — not a missing value.
   const [aiProvenance, setAiProvenance] = useState<AiProvenance | null>(null);
 
-  // --- 1. FETCH FROM CONTENTFUL ---
-  // Callers set isSyncing(true) themselves: the manual path starts with it already true (initial
-  // state), and setting state synchronously inside an effect cascades a render.
-  const fetchChecklistFromContentful = async (nameToSearch: string) => {
+  // --- 1. CHECKLIST ---
+  // The CMS checklist for the asset's type, else the built-in one for that type, else a general
+  // one — never an unrelated checklist (src/lib/checklists.ts). Callers set isSyncing(true).
+  // Only the newest request may set the checklist: pick asset A, then B, and A's slower response
+  // must not land on B (fresh review 2026-11-25).
+  const checklistRequest = useRef(0);
+  const loadChecklist = async (terms: (string | null | undefined)[]) => {
+    const request = ++checklistRequest.current;
+    let entries: CmsChecklistEntry[] = [];
     try {
-      const response = await contentfulClient.getEntries({
-        content_type: 'checklist',
-        include: 2,
-      });
-
-      if (response.items.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const matchingEntry = response.items.find((item: Record<string, any>) => {
-          const linkedEntry = item.fields.equipmentType as Record<string, Record<string, string>>;
-          const linkedName = linkedEntry?.fields?.name || "";
-          return nameToSearch.toLowerCase().includes(linkedName.toLowerCase()) ||
-                 linkedName.toLowerCase().includes(nameToSearch.toLowerCase());
-        });
-
-        const item = matchingEntry || response.items[0];
-        const rawData = item.fields.questions as Record<string, unknown> | unknown[];
-        const rawList = rawData ? (Array.isArray(rawData) ? rawData : (rawData as Record<string, unknown[]>).questions || []) : [];
-
-        if (rawList.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mappedItems = rawList.map((q: any, i: number) => ({
-            id: (i + 1).toString(),
-            question: q.text || q.question || "Unknown Question",
-            status: "pending" as const,
-          }));
-          setChecklist(mappedItems);
-        } else {
-          setChecklist([{ id: "1", question: "Check General Condition", status: "pending" }]);
-        }
-      }
+      const response = await contentfulClient.getEntries({ content_type: 'checklist', include: 2 });
+      entries = response.items as unknown as CmsChecklistEntry[];
     } catch (error) {
+      // The CMS being unreachable must not stop an inspection: the built-in checklists still apply.
       console.error("Contentful Error:", error);
-    } finally {
-      setIsSyncing(false);
     }
+    if (request !== checklistRequest.current) return;
+    const picked = pickChecklist(entries, terms);
+    setChecklist(picked.questions.map((question, i) => ({ id: String(i + 1), question, status: "pending" as const })));
+    setChecklistBasis(picked.basis);
+    setIsSyncing(false);
   };
 
   // --- 2. INITIAL LOAD ---
-  // Deferred to a microtask so no state is set synchronously in the effect body
-  // (react-hooks/set-state-in-effect); `active` stops a load for an unmounted screen.
+  // Manual mode: load the organisation's active equipment register; the checklist loads once an
+  // asset is chosen. `active` stops a load for an unmounted screen.
   useEffect(() => {
     if (isAiMode) return;
     let active = true;
-    queueMicrotask(() => {
-      if (active) void fetchChecklistFromContentful(equipmentName);
-    });
+    void supabase
+      .from('equipment')
+      .select('id, name, type')
+      .eq('status', 'active')
+      .order('name')
+      .limit(500)
+      .then(({ data }) => {
+        if (active) setRegistry(data ?? []);
+      });
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per mode
   }, [isAiMode]);
+
+  const chooseEquipment = (value: string) => {
+    setEquipmentId(value);
+    const item = registry.find((e) => e.id === value);
+    setEquipmentName(item ? item.name : "");
+    setChecklist([]);
+    setIsSyncing(true);
+    // Chosen by the asset's type first (e.g. "Fire Extinguisher"), then its name.
+    void loadChecklist(item ? [item.type, item.name] : []);
+  };
 
   // --- 3. AI ANALYSIS ---
   const analyzeWithAI = async (blob: Blob) => {
     setIsAnalyzing(true);
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = async () => {
-        const base64data = reader.result?.toString().split(',')[1];
-        // Get auth token for API call
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        const token = session?.access_token || '';
+      // Read the file BEFORE the request, inside this try: the request used to run in a
+      // FileReader callback, so the spinner stopped immediately and failures were never caught.
+      const base64data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] ?? '');
+        reader.onerror = () => reject(reader.error ?? new Error('Could not read the photo.'));
+        reader.readAsDataURL(blob);
+      });
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const token = session?.access_token || '';
 
-        const response = await fetch("/api/analyze", {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ image: base64data, mimeType: blob.type }),
-        });
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image: base64data, mimeType: blob.type }),
+      });
 
-        if (!response.ok) throw new Error(`API failed with status ${response.status}`);
-        const data = await response.json();
+      if (!response.ok) throw new Error(`API failed with status ${response.status}`);
+      const data = await response.json();
 
-        if (data.equipmentName) {
-          // Validated, not cast — this crossed a network boundary. If the server ever stops
-          // stamping provenance we record no AI claim rather than a fabricated one.
-          if (isAiProvenance(data.provenance)) {
-            setAiProvenance(data.provenance);
-          }
-          setEquipmentName(data.equipmentName);
-          setIsSyncing(true);
-          await fetchChecklistFromContentful(data.equipmentName);
-        } else {
-          throw new Error("AI did not return equipment name.");
-        }
-      };
+      if (!data.equipmentName) throw new Error("AI did not return equipment name.");
+      // Validated, not cast — this crossed a network boundary. If the server ever stops
+      // stamping provenance we record no AI claim rather than a fabricated one.
+      if (isAiProvenance(data.provenance)) {
+        setAiProvenance(data.provenance);
+      }
+      setEquipmentName(data.equipmentName);
+      setIsSyncing(true);
+      await loadChecklist([data.equipmentName]);
     } catch (error) {
       console.error("AI API Error:", error);
-      toast.error("AI Service Unavailable. Check API Key.");
+      toast.error("AI identification is unavailable right now. Use Manual mode instead.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -204,13 +213,6 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       items.map((item) => (item.id === id ? { ...item, status } : item))
     );
 
-    // If marking as fail, prompt corrective action
-    if (status === "fail") {
-      const failedItem = checklist.find((item) => item.id === id);
-      if (failedItem) {
-        setCorrectiveItem({ ...failedItem, status: "fail" });
-      }
-    }
   };
 
   const allCompleted = checklist.length > 0 && checklist.every((item) => item.status !== "pending");
@@ -219,7 +221,15 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
   // signature_url on the free plan). Requiring one on the free plan meant a free organisation could
   // not file a single inspection (DEF-079): free records are filed unsigned, and say so.
   const signaturesAllowed = canAccess(organization?.plan ?? 'free', 'signatures');
-  const readyToSubmit = allCompleted && (!signaturesAllowed || !!signatureDataUrl);
+  const hasEquipment = equipmentName.trim().length > 0;
+  const readyToSubmit = hasEquipment && allCompleted && (!signaturesAllowed || !!signatureDataUrl);
+
+  /** Move to the next failed item's corrective action, or finish when none are left. */
+  const nextFailure = () => {
+    const rest = pendingFailures.slice(1);
+    setPendingFailures(rest);
+    if (rest.length === 0) onComplete();
+  };
 
   // --- 6. SAVE ---
   const handleSave = async () => {
@@ -250,7 +260,8 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       }
 
       const payload: InspectionInsert = {
-        equipment_name: equipmentName,
+        equipment_name: equipmentName.trim(),
+        equipment_id: equipmentId && equipmentId !== UNREGISTERED ? equipmentId : null,
         // The inspector of record is always the human who signed. Naming the AI here would
         // put a machine on a safety document as the responsible inspector, which NFPA 10
         // and OSHA 1910.157 both require to be a qualified person. AI involvement is
@@ -288,7 +299,11 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
           esignConsentVersion: consentVersion,
           timestamp: Date.now(),
         });
-        toast.info("Saved offline — will sync when back online");
+        toast.info(
+          hasFailures
+            ? "Saved offline — will sync when back online. Report the failed items from Corrective Actions once it has synced."
+            : "Saved offline — will sync when back online"
+        );
         onComplete();
         return;
       }
@@ -297,11 +312,14 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
 
       if (error) throw error;
 
-      if (data?.id) {
-        setSubmittedInspectionId(data.id);
-      }
-
       toast.success("Inspection submitted successfully");
+      const failed = checklist.filter((item) => item.status === "fail");
+      if (data?.id && failed.length > 0) {
+        // Stay on this screen: each failed item gets its corrective action, then we finish.
+        setSubmittedInspectionId(data.id);
+        setPendingFailures(failed);
+        return;
+      }
       onComplete();
     } catch (err: unknown) {
       console.error("Error:", err);
@@ -334,6 +352,40 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       </header>
 
       <main className="flex-1 overflow-auto px-4 py-6 space-y-6">
+
+        {!isAiMode && (
+          <div className="space-y-2">
+            <label htmlFor="inspect-equipment" className="text-sm font-medium text-foreground">
+              Equipment
+            </label>
+            <select
+              id="inspect-equipment"
+              value={equipmentId}
+              onChange={(e) => chooseEquipment(e.target.value)}
+              className="w-full rounded-lg border border-input bg-card px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="" disabled>
+                {registry.length ? "Choose the equipment you are inspecting" : "No equipment registered yet"}
+              </option>
+              {registry.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.type ? `${e.name} — ${e.type}` : e.name}
+                </option>
+              ))}
+              <option value={UNREGISTERED}>Not in the register (type its name)</option>
+            </select>
+            {equipmentId === UNREGISTERED && (
+              <input
+                aria-label="Equipment name"
+                value={equipmentName}
+                onChange={(e) => setEquipmentName(e.target.value)}
+                maxLength={200}
+                placeholder="Equipment name"
+                className="w-full rounded-lg border border-input bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            )}
+          </div>
+        )}
 
         {/* Photo / Scan UI */}
         <FadeInView>
@@ -392,6 +444,8 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Fetching Safety Rules...
             </div>
+          ) : !isAiMode && !equipmentId ? (
+            <p className="py-8 text-center text-muted-foreground">Choose the equipment to load its checklist.</p>
           ) : checklist.length === 0 && isAiMode && !photoUrl ? (
             <div className="text-center py-8 px-4 text-muted-foreground">
               <Sparkles className="mx-auto h-12 w-12 text-primary/20 mb-4" />
@@ -400,6 +454,9 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
             </div>
           ) : (
             <StaggerContainer className="space-y-3">
+              {checklistBasis && checklist.length > 0 && (
+                <p className="text-xs text-muted-foreground">Checklist: {checklistBasis}</p>
+              )}
               {checklist.map((item) => (
                 <StaggerItem key={item.id}>
                   <div className="rounded-lg bg-card p-4 shadow-sm border border-border">
@@ -461,13 +518,17 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       <div className="sticky bottom-0 border-t border-border bg-card p-4 pb-safe">
         <Button
           onClick={handleSave}
-          disabled={!readyToSubmit || isSubmitting || isSyncing || isAnalyzing}
+          // Filed already (the corrective-action dialog is open): a second press would file a second,
+          // immutable record (fresh review 2026-11-25).
+          disabled={!readyToSubmit || isSubmitting || isSyncing || isAnalyzing || submittedInspectionId !== null}
           variant={readyToSubmit ? (hasFailures ? "destructive" : "default") : "secondary"}
           className="w-full gap-2 h-12 rounded-lg"
           size="lg"
         >
           {isSubmitting ? (
             <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
+          ) : !hasEquipment ? (
+            "Choose the Equipment"
           ) : !allCompleted ? (
             "Complete All Checklist Items"
           ) : signaturesAllowed && !signatureDataUrl ? (
@@ -479,15 +540,16 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       </div>
 
       {/* Corrective Action Modal */}
-      {correctiveItem && submittedInspectionId && (
+      {pendingFailures.length > 0 && submittedInspectionId && (
         <CorrectiveActionForm
+          key={pendingFailures[0].id}
           inspectionId={submittedInspectionId}
-          checklistItemId={correctiveItem.id}
-          questionText={correctiveItem.question}
-          onClose={() => setCorrectiveItem(null)}
+          checklistItemId={pendingFailures[0].id}
+          questionText={pendingFailures[0].question}
+          onClose={() => nextFailure()}
           onSubmitted={() => {
-            setCorrectiveItem(null);
             toast.success("Corrective action submitted");
+            nextFailure();
           }}
         />
       )}

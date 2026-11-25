@@ -6,6 +6,7 @@ import { CorrectiveActionList } from '@/components/corrective/CorrectiveActionLi
 import { useAuth } from '@/components/auth/AuthProvider';
 import { AlertTriangle } from 'lucide-react';
 import { MotionPage } from '@/components/motion/MotionPage';
+import { config } from '@/lib/config';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -24,7 +25,7 @@ export default function DashboardPage() {
       <div className="grid gap-8 xl:grid-cols-3">
         {/* Inspections — takes 2 cols */}
         <div className="xl:col-span-2">
-          <InspectionsTable />
+          <InspectionsTable limit={config.dashboard.recentRows} />
         </div>
 
         {/* Corrective Actions sidebar */}
