@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { signUp } from '@/lib/auth';
+import { readInviteFromLocation, rememberPendingInvite, signUp, subscribeToHash } from '@/lib/auth';
 import { checkPassword, describeVerdict } from '@/lib/password-safety';
 import { config } from '@/lib/config';
 import { Loader2, ShieldCheck, ArrowRight, CheckCircle, Building2 } from 'lucide-react';
@@ -17,6 +17,10 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState('');
+  const [needsConfirmation, setNeedsConfirmation] = useState(true);
+  // An invitation link is /auth/signup#invite=<token>. Read through useSyncExternalStore so the
+  // prerendered HTML (no fragment) and the first client render agree.
+  const inviteToken = useSyncExternalStore(subscribeToHash, readInviteFromLocation, () => null);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +37,13 @@ export default function SignupPage() {
         return;
       }
 
-      await signUp(email, password, fullName, orgName);
+      if (inviteToken) rememberPendingInvite(inviteToken);
+      const { pendingConfirmation } = await signUp(email, password, fullName, inviteToken ? null : orgName);
+      if (!pendingConfirmation) {
+        window.location.assign('/app/dashboard');
+        return;
+      }
+      setNeedsConfirmation(true);
       setIsComplete(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Signup failed');
@@ -127,15 +137,22 @@ export default function SignupPage() {
                 </div>
                 <h3 className="text-step-1 font-bold font-display text-foreground">Account Created!</h3>
                 <p className="text-sm text-muted-foreground">
-                  Check your email to verify your account, then{' '}
-                  <Link href="/auth/login" className="text-primary font-medium underline">sign in</Link>.
+                  {needsConfirmation ? 'Check your email to verify your account, then' : 'Your account is ready —'}{' '}
+                  <Link href="/auth/login" className="text-primary font-medium underline">sign in</Link>
+                  {inviteToken ? ' on this device to join your team.' : '.'}
                 </p>
               </motion.div>
             ) : (
               <div key="signup-form">
                 <div>
-                  <h2 className="text-step-2 font-extrabold font-display text-foreground">Create your account</h2>
-                  <p className="text-muted-foreground mt-1">Set up your organization in 60 seconds</p>
+                  <h2 className="text-step-2 font-extrabold font-display text-foreground">
+                    {inviteToken ? 'Join your team' : 'Create your account'}
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    {inviteToken
+                      ? 'You were invited to an organisation. Create your account to accept.'
+                      : 'Set up your organization in 60 seconds'}
+                  </p>
                 </div>
 
                 {/* Plain <form>: an entrance animation must never gate sign-up. */}
@@ -156,9 +173,12 @@ export default function SignupPage() {
                   </AnimatePresence>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Full Name</label>
+                    <label htmlFor="signup-name" className="text-sm font-medium text-foreground">Full Name</label>
                     <input
+                      id="signup-name"
                       type="text"
+                      maxLength={200}
+                      autoComplete="name"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
@@ -167,25 +187,30 @@ export default function SignupPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  {!inviteToken && <div className="space-y-2">
+                    <label htmlFor="signup-org" className="text-sm font-medium text-foreground flex items-center gap-2">
                       <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                       Organization Name
                     </label>
                     <input
+                      id="signup-org"
                       type="text"
                       value={orgName}
                       onChange={(e) => setOrgName(e.target.value)}
+                      maxLength={200}
+                      autoComplete="organization"
                       required
                       className="w-full rounded-lg border border-input bg-card px-4 py-3.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                       placeholder="Acme Construction"
                     />
-                  </div>
+                  </div>}
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Email</label>
+                    <label htmlFor="signup-email" className="text-sm font-medium text-foreground">Email</label>
                     <input
+                      id="signup-email"
                       type="email"
+                      autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -195,8 +220,9 @@ export default function SignupPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Password</label>
+                    <label htmlFor="signup-password" className="text-sm font-medium text-foreground">Password</label>
                     <input
+                      id="signup-password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}

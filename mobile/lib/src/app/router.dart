@@ -30,6 +30,7 @@ import '../auth/session_controller.dart';
 import '../auth/signup_screen.dart';
 import '../screens/corrective_actions_screen.dart';
 import '../screens/equipment_screen.dart';
+import '../screens/help_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/inspect_screen.dart';
 import '../screens/inspection_detail_screen.dart';
@@ -53,6 +54,7 @@ class Routes {
   static const String equipment = '/app/equipment';
   static const String corrective = '/app/corrective';
   static const String settings = '/app/settings';
+  static const String help = '/app/help';
 
   static String inspectionDetail(int id) => '/app/inspections/$id';
 
@@ -116,6 +118,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
             builder: (_, _) => const CorrectiveActionsScreen(),
           ),
           GoRoute(path: 'settings', builder: (_, _) => const SettingsScreen()),
+          GoRoute(path: 'help', builder: (_, _) => const HelpScreen()),
         ],
       ),
     ],

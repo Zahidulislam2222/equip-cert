@@ -233,4 +233,10 @@ class NetworkConfig {
     'ANALYZE_TIMEOUT_MS',
     defaultValue: 45000,
   );
+
+  /// The server tries up to two free models at 35 s each before falling back to an article.
+  static const int assistTimeoutMs = int.fromEnvironment(
+    'ASSIST_TIMEOUT_MS',
+    defaultValue: 75000,
+  );
 }

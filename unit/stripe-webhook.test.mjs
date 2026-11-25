@@ -209,7 +209,8 @@ describe('the real handler, per delivery target', () => {
     t.after(() => server.close());
     const r = await post(server, PAYLOAD, signedHeaders());
     assert.equal(r.status, 200, r.text);
-    assert.deepEqual(JSON.parse(r.text), { received: true });
+    // customer.created is verified, then acknowledged without touching the database.
+    assert.deepEqual(JSON.parse(r.text), { received: true, ignored: 'customer.created' });
   });
 
   test('Vercel replay (lazy getter) → 200, and the getter is never read', async (t) => {

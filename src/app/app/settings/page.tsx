@@ -5,6 +5,7 @@ import { config } from '@/lib/config';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { ConsentControls } from '@/components/shared/ConsentControls';
 import { PrivacyRequestQueue } from '@/components/shared/PrivacyRequestQueue';
+import { BillingCard } from '@/components/shared/BillingCard';
 import { MotionPage } from '@/components/motion/MotionPage';
 import { StaggerContainer, StaggerItem } from '@/components/motion/StaggerGrid';
 
@@ -71,6 +72,11 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        </StaggerItem>
+
+        {/* Plan and billing — Stripe Checkout / customer portal (test mode). */}
+        <StaggerItem>
+          <BillingCard />
         </StaggerItem>
 
         {/* Appearance */}

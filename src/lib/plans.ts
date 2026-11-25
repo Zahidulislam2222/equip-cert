@@ -5,6 +5,8 @@
 // Kept free of Stripe SDK imports so the marketing bundle does not pull in stripe-js.
 
 export const CURRENCY_SYMBOL = '$';
+/** ISO 4217 code for the same currency, as Stripe expects it. */
+export const CURRENCY_CODE = 'usd';
 
 export const PLANS = {
   free: {

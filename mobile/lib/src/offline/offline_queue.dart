@@ -39,6 +39,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../data/evidence_repository.dart';
+import '../widgets/esign_consent.dart';
 import '../data/inspection_repository.dart';
 import '../util/uuid.dart';
 
@@ -56,6 +57,10 @@ enum SyncOutcome {
 
   /// The digest did not match. Quarantined, never sent.
   tampered,
+
+  /// A signed record by someone other than the signed-in person. Left queued, untouched, until
+  /// the signer signs in on this phone: consent is never recorded for whoever happens to sync.
+  held,
 }
 
 @immutable
@@ -65,6 +70,7 @@ class SyncReport {
     required this.retryable,
     required this.exhausted,
     required this.tampered,
+    this.held = 0,
   });
 
   static const SyncReport empty = SyncReport(
@@ -79,7 +85,11 @@ class SyncReport {
   final int exhausted;
   final int tampered;
 
-  bool get didAnything => submitted + retryable + exhausted + tampered > 0;
+  /// Signed by someone else; waiting for them to sign in here.
+  final int held;
+
+  bool get didAnything =>
+      submitted + retryable + exhausted + tampered + held > 0;
   bool get needsAttention => exhausted > 0 || tampered > 0;
 }
 
@@ -232,7 +242,17 @@ class OfflineQueue {
     final String directory = await getDatabasesPath();
     final Database database = await openDatabase(
       p.join(directory, 'equipcert_offline.db'),
-      version: 1,
+      version: 2,
+      // v2 (2026-11-25): consent_version — the e-sign wording the signer saw, captured when the
+      // record was queued. Before it, sync sent the version of whatever build ran the sync, so
+      // an app update between capture and sync recorded the wrong wording.
+      onUpgrade: (Database db, int from, int to) async {
+        if (from < 2) {
+          await db.execute(
+            'ALTER TABLE $_table ADD COLUMN consent_version TEXT',
+          );
+        }
+      },
       onCreate: (Database db, int _) async {
         await db.execute('''
           CREATE TABLE $_table (
@@ -246,7 +266,8 @@ class OfflineQueue {
             captured_at    INTEGER NOT NULL,
             attempts       INTEGER NOT NULL DEFAULT 0,
             last_error     TEXT,
-            quarantined    INTEGER NOT NULL DEFAULT 0
+            quarantined    INTEGER NOT NULL DEFAULT 0,
+            consent_version TEXT
           )
         ''');
         // Sync drains oldest-first: an inspection captured at 09:00 should reach the record
@@ -269,6 +290,7 @@ class OfflineQueue {
     Uint8List? photo,
     EvidenceFormat? photoFormat,
     Uint8List? signature,
+    String? consentVersion,
   }) async {
     final Database db = await _open();
     final String id = uuidV4();
@@ -288,6 +310,7 @@ class OfflineQueue {
       'captured_at': DateTime.now().millisecondsSinceEpoch,
       'attempts': 0,
       'quarantined': 0,
+      'consent_version': signature == null ? null : consentVersion,
     });
 
     return id;
@@ -318,12 +341,29 @@ class OfflineQueue {
   Future<SyncReport> sync() async {
     final Database db = await _open();
 
-    final List<Map<String, Object?>> rows = await db.query(
+    // Signed rows by someone other than the signed-in person are set aside FIRST, from a
+    // light query without the evidence blobs. Filtering inside the batch would let held rows —
+    // always the oldest — fill every batch and starve everyone else's work.
+    final String? me = await _inspections.currentProfileId();
+    final List<Map<String, Object?>> index = await db.query(
       _table,
+      columns: <String>['id', 'payload', 'signature IS NOT NULL AS signed'],
       where: 'quarantined = 0',
       orderBy: 'captured_at ASC',
-      limit: OfflineConfig.syncBatchSize,
     );
+    final (List<String> batch, int heldCount) = selectSyncBatch(
+      index: index,
+      currentProfileId: me,
+      batchSize: OfflineConfig.syncBatchSize,
+    );
+    int held = heldCount;
+
+    final List<Map<String, Object?>> rows = <Map<String, Object?>>[];
+    for (final String id in batch) {
+      rows.addAll(
+        await db.query(_table, where: 'id = ?', whereArgs: <Object?>[id]),
+      );
+    }
 
     int submitted = 0;
     int retryable = 0;
@@ -340,6 +380,8 @@ class OfflineQueue {
           exhausted++;
         case SyncOutcome.tampered:
           tampered++;
+        case SyncOutcome.held:
+          held++;
       }
     }
 
@@ -348,6 +390,7 @@ class OfflineQueue {
       retryable: retryable,
       exhausted: exhausted,
       tampered: tampered,
+      held: held,
     );
   }
 
@@ -395,6 +438,13 @@ class OfflineQueue {
       }
 
       if (queued.signature != null) {
+        // Consent evidence before the signed record (DEF-074), for the signer only (rows by
+        // anyone else were held above), with the wording version captured at signing. Rows
+        // queued before schema v2 have none and fall back to this build's wording. The
+        // server's timestamp is the sync time, which is after the signature — a stated limit.
+        await _inspections.recordEsignConsent(
+          (row['consent_version'] as String?) ?? ESignConsent.version,
+        );
         payload['signature_url'] = await _evidence.upload(
           kind: EvidenceKind.signature,
           organizationId: organizationId,
@@ -512,6 +562,34 @@ class OfflineQueue {
     }
     return 'Could not file the inspection. It is still queued.';
   }
+}
+
+/// Which queued rows one sync pass may send, oldest first, and how many are held back.
+///
+/// [index] rows carry `id`, `payload` (JSON) and `signed` (1/0), oldest first. A signed row
+/// whose `inspector_id` is not [currentProfileId] — or any signed row while signed out — is
+/// held: consent must be recorded for the signer, never for whoever syncs. Held rows are set
+/// aside BEFORE the batch is cut, so they cannot fill every batch and starve the rest.
+@visibleForTesting
+(List<String>, int) selectSyncBatch({
+  required List<Map<String, Object?>> index,
+  required String? currentProfileId,
+  required int batchSize,
+}) {
+  int held = 0;
+  final List<String> batch = <String>[];
+  for (final Map<String, Object?> r in index) {
+    final bool signed = (r['signed'] as int? ?? 0) == 1;
+    final Object? inspector = (jsonDecode(
+      r['payload']! as String,
+    ) as Map<String, Object?>)['inspector_id'];
+    if (signed && (currentProfileId == null || inspector != currentProfileId)) {
+      held++;
+      continue;
+    }
+    if (batch.length < batchSize) batch.add(r['id']! as String);
+  }
+  return (batch, held);
 }
 
 final Provider<OfflineQueue> offlineQueueProvider = Provider<OfflineQueue>((

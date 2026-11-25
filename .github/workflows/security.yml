@@ -32,6 +32,19 @@ jobs:
       - uses: actions/checkout@v7
       - run: pipx run semgrep scan --error --config p/security-audit --metrics=off
 
+  # Known-vulnerable PRODUCTION dependencies (DEF-075). next 16.3.4 carried a critical advisory
+  # for weeks because nothing here asked the registry. Dev-only tooling is reviewed by hand and
+  # by Dependabot; what ships in the static export, the handlers and the server bundle must be
+  # clean at "high" or the branch is blocked. Reads the lockfile only — no install, no scripts.
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm audit --omit=dev --audit-level=high
+
   # OPTIONAL — LLM security review of PR diffs (contextual issues SAST misses:
   # missing auth checks, logic flaws). Uncomment only after adding the
   # ANTHROPIC_API_KEY repo secret. PAID API usage — see note at top.

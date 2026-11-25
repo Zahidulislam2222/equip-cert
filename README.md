@@ -64,7 +64,9 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | **Equipment Registry** | Full fleet inventory with inspection history and due-date tracking |
 | **Inspection Scheduling** | Recurring schedules (daily/weekly/monthly/quarterly) with overdue alerts |
 | **PDF Reports** | Downloadable inspection reports, machine-readably marked when AI-assisted (EU AI Act Art. 50) |
-| **Team Management** | Role-based access control — admin, manager, technician |
+| **Team Management** | Role-based access control — admin, manager, technician. Admins invite people with a single-use, expiring link (only its hash is stored); seats follow the plan |
+| **Reports** | 30/90/365-day summaries, weekly trend chart with a table alternative, per-inspector breakdown, CSV export guarded against spreadsheet formula injection |
+| **Billing** | Stripe Checkout and Customer Portal (test mode). The plan is set only by the verified webhook — a browser cannot change it |
 | **Real-time Notifications** | Instant alerts for failures, overdue actions, and upcoming inspections |
 
 ### Platform
@@ -72,7 +74,8 @@ Managers get a real-time dashboard showing fleet compliance, failed items requir
 | Feature | Description |
 |---------|-------------|
 | **Multi-AI Provider** | Swap between Gemini, OpenAI, or Claude via environment variable — zero code changes |
-| **Multi-Tenant** | Organization-scoped data isolation with Row Level Security |
+| **Multi-Tenant** | Organization-scoped data isolation with Row Level Security. New organisations are created by one server-side function; nobody can attach themselves to an existing one |
+| **Help Assistant** | In-app AI help (web and mobile), disclosed as AI, answering from approved help articles and a read-only summary of the user's own organisation. Free models only, rate-limited, falls back to the best article when no model answers |
 | **Dark-first design** | Warm near-black surfaces, one Safety Yellow accent, Archivo + Inter; semantic colour pairs contrast-tested against WCAG. Light mode available |
 | **Mobile App** | Native Flutter client for Android and iOS (`mobile/`), sharing the backend, schema and compliance contracts |
 | **Plan Tiers** | Free / Pro / Enterprise limits enforced by a database trigger. Stripe checkout is integrated but not configured |
@@ -367,6 +370,8 @@ npm run build:server     # Bundle the self-host server
 npm test                 # Config boundary, schema, deploy-manifest drift, unit tests
 npm run lint             # ESLint
 npm run test:rls         # Database authorization + audit log e2e (local stack only)
+npm run test:local       # Tenancy, invitations, billing guard, e-sign consent (local Supabase stack)
+npm run test:browser     # Browser flows + axe accessibility, desktop and phone (local stack, Playwright)
 npm run test:load        # Origin throughput harness
 npm run test:production  # Check a deployment: health, readiness, headers, compiled backend
 ```

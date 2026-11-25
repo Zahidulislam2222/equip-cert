@@ -14,8 +14,8 @@
     "GDPR Art. 13(1)(a) requires the controller's real identity, and a contact address that",
     "bounces is a failure to provide it, not a formality. Fill these in before going live."
   ],
-  "documentVersion": "2026-09-14",
-  "effectiveDate": "2026-09-15",
+  "documentVersion": "2026-11-25",
+  "effectiveDate": "2026-11-25",
 
   "controller": {
     "legalName": "[CONTROLLER LEGAL NAME]",
@@ -61,6 +61,16 @@
             "Art. 6(1)(b) — the technician confirms or corrects every suggestion before signing"
           ],
           [
+            "Questions typed into the in-app help assistant, and — only when a question asks about your organisation — a read-only summary of its own records (counts, equipment names and due dates)",
+            "To answer questions about using the product. The assistant is optional and is not needed to use any feature",
+            "Art. 6(1)(f) — our legitimate interest in helping users use the product; you can simply not use it"
+          ],
+          [
+            "Electronic-signature consent — the time you agreed to sign electronically, and the version of the wording you agreed to",
+            "Evidence that consent to an electronic signature was given before a record was signed (US ESIGN Act, 15 U.S.C. §7001(c))",
+            "Art. 6(1)(c) where a legal duty to keep that evidence applies, otherwise Art. 6(1)(f)"
+          ],
+          [
             "Authentication and security data — sign-in events, refresh tokens, IP address on privacy requests",
             "To keep accounts secure, to rate-limit abuse, and to be able to investigate a suspected compromise",
             "Art. 6(1)(f) — our legitimate interest in the security of the service and of your data"
@@ -89,7 +99,8 @@
         "When a technician photographs a piece of equipment, that photograph is sent to a third-party vision model, which returns suggestions: a likely equipment type, a possible serial number, an apparent condition. The technician then works through the checklist item by item and signs.",
         "The signature is the operative act. The record that is stored, and that an inspector or insurer relies on, is the technician's checklist — not the model's output. The technician is the inspector of record and is named as such; the AI is never named as the inspector.",
         "This is not automated decision-making within the meaning of Article 22. Nothing is decided by the model; a qualified human decides, having seen and been able to change every suggestion.",
-        "Where any part of a record was AI-assisted, that fact is disclosed to the technician before they sign, and the record itself stores which provider and model produced the suggestion. This satisfies Article 50(1) of the EU AI Act. Our classification memo, including the obligation we have not yet met, is published at docs/compliance/ai-act-classification.md."
+        "Where any part of a record was AI-assisted, that fact is disclosed to the technician before they sign, and the record itself stores which provider and model produced the suggestion. This satisfies Article 50(1) of the EU AI Act. Our classification memo, including the obligation we have not yet met, is published at docs/compliance/ai-act-classification.md.",
+        "The in-app help assistant is also an AI, and says so before the first question. It answers from our help articles and, when asked, from a read-only summary of your own organisation's records, read with your own permissions so it can never see another organisation's data. It cannot change anything. Your questions are sent through OpenRouter to free AI models; EquipCert does not store the conversation, but the companies that serve free models may log or retain what they receive under their own terms, so do not type personal or confidential details into it. If no model answers, you get the closest help article instead."
       ]
     },
     {
@@ -97,7 +108,7 @@
       "heading": "Who we share it with",
       "paragraphs": [
         "We do not sell personal data and we do not share it for cross-context behavioural advertising, as those terms are defined in the CCPA. We have never done so.",
-        "The current sub-processor list, with each one's role, location and transfer mechanism, is maintained at docs/compliance/sub-processors.md. In summary: a database and authentication platform, a vision model provider, a content platform for checklist templates, hosting, and a payment processor if a subscription is active.",
+        "The current sub-processor list, with each one's role, location and transfer mechanism, is maintained at docs/compliance/sub-processors.md. In summary: a database and authentication platform, a vision model provider, an AI routing service for the optional help assistant (OpenRouter), a content platform for checklist templates, hosting, and a payment processor (currently in test mode only).",
         "We also disclose inspection records to your own organisation's managers and administrators — that is the product working as intended — and to a regulator where we are legally required to, which is not something you can opt out of."
       ]
     },

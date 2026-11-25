@@ -77,46 +77,50 @@ function StatCard({ title, value, subtitle, icon, trend, variant = 'default', is
   );
 }
 
+/** This month's inspection totals for one organisation (RLS still scopes the read). */
+async function loadMonthlyStats(organizationId: string | null) {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  // A monthly aggregate tolerates replica lag; routed to the read replica when one is configured.
+  let query = supabaseRead
+    .from('inspections')
+    .select('status')
+    .gte('created_at', startOfMonth.toISOString());
+  if (organizationId) query = query.eq('organization_id', organizationId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const total = data?.length || 0;
+  const failed = data?.filter((d) => d.status === 'Action Required').length || 0;
+  const safetyScore = total > 0 ? (((total - failed) / total) * 100).toFixed(1) : '100';
+  return { total, failed, safetyScore };
+}
+
 export function StatsCards() {
   const { organization } = useAuth();
   const [stats, setStats] = useState({ total: 0, failed: 0, safetyScore: '0' });
   const [isLoading, setIsLoading] = useState(true);
 
+  // The loader is a pure function and state is set in its callback, never synchronously in the
+  // effect body (react-hooks/set-state-in-effect). `active` drops a response that arrives after
+  // the organisation has changed, so an old tenant's figures can never overwrite a new one's.
   useEffect(() => {
-    fetchStats();
-  }, [organization]);
-
-  const fetchStats = async () => {
-    setIsLoading(true);
-    try {
-      // Get inspections for the current month
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      // A monthly aggregate tolerates replica lag; routed to the read replica when one is configured.
-      let query = supabaseRead
-        .from('inspections')
-        .select('status')
-        .gte('created_at', startOfMonth.toISOString());
-
-      if (organization) {
-        query = query.eq('organization_id', organization.id);
-      }
-
-      const { data } = await query;
-
-      const total = data?.length || 0;
-      const failedCount = data?.filter((d) => d.status === 'Action Required').length || 0;
-      const score = total > 0 ? (((total - failedCount) / total) * 100).toFixed(1) : '100';
-
-      setStats({ total, failed: failedCount, safetyScore: score });
-    } catch (err) {
-      console.error('Stats error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    let active = true;
+    loadMonthlyStats(organization?.id ?? null)
+      .then((next) => {
+        if (active) setStats(next);
+      })
+      .catch((err) => console.error('Stats error:', err))
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [organization?.id]);
 
   return (
     <StaggerContainer className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

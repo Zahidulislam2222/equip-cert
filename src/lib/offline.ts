@@ -34,6 +34,11 @@ export interface QueuedSubmission {
   // rename ships and only fails for users who were offline when it happened.
   payload: InspectionInsert;
   photoBlob?: Blob | null;
+  // Evidence is uploaded at SYNC time, not before queueing: an upload needs the network, so
+  // doing it first meant an offline submission threw before it ever reached this queue (DEF-078).
+  signatureBlob?: Blob | null;
+  // The e-sign consent wording version shown at signing; recorded server-side during sync.
+  esignConsentVersion?: string | null;
   timestamp: number;
   integrityHash?: string;
 }
@@ -116,13 +121,20 @@ export async function getCachedChecklist(equipmentName: string): Promise<CachedC
 // --- Sync Logic ---
 
 export async function syncQueuedSubmissions(
-  submitFn: (payload: InspectionInsert, photoBlob?: Blob | null) => Promise<void>
-): Promise<{ synced: number; failed: number }> {
+  submitFn: (item: QueuedSubmission) => Promise<void>,
+  /** Items this returns true for stay queued untouched — e.g. a signature by someone else. */
+  hold: (item: QueuedSubmission) => boolean = () => false
+): Promise<{ synced: number; failed: number; held: number }> {
   const items = await getQueuedSubmissions();
   let synced = 0;
   let failed = 0;
+  let held = 0;
 
   for (const item of items) {
+    if (hold(item)) {
+      held++;
+      continue;
+    }
     try {
       // Verify integrity before syncing
       if (item.integrityHash) {
@@ -134,7 +146,7 @@ export async function syncQueuedSubmissions(
         }
       }
 
-      await submitFn(item.payload, item.photoBlob);
+      await submitFn(item);
       if (item.id) await removeFromQueue(item.id);
       synced++;
     } catch {
@@ -142,5 +154,5 @@ export async function syncQueuedSubmissions(
     }
   }
 
-  return { synced, failed };
+  return { synced, failed, held };
 }

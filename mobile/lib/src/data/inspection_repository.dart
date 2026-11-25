@@ -201,6 +201,30 @@ class InspectionRepository {
   /// `submittedInspectionId` is set, which happens inside the same handler that then unmounts
   /// the screen, so the form is unreachable and a failed item can never produce an action
   /// (DEF-043). Here the id is returned and the caller raises the action afterwards.
+  /// Record e-signature consent as evidence (DEF-074). The SERVER stamps the time; [version]
+  /// names the wording shown (`ESignConsent.version`, kept identical to
+  /// src/content/esign-consent.json by test/esign_consent_contract_test.dart). Called before a
+  /// signed record is filed, so a signed inspection never exists without its consent record.
+  /// The signed-in person's profile id, or null when signed out. The offline queue files a
+  /// signed record only when this matches the record's inspector.
+  Future<String?> currentProfileId() async {
+    final String? uid = _client.auth.currentUser?.id;
+    if (uid == null) return null;
+    final Map<String, dynamic>? row = await _client
+        .from('profiles')
+        .select('id')
+        .eq('user_id', uid)
+        .maybeSingle();
+    return row?['id'] as String?;
+  }
+
+  Future<void> recordEsignConsent(String version) async {
+    await _client.rpc<dynamic>(
+      'record_esign_consent',
+      params: <String, Object?>{'p_version': version},
+    );
+  }
+
   Future<int> submit(Map<String, Object?> payload) async {
     final Map<String, dynamic> row = await _client
         .from('inspections')

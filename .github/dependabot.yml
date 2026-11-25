@@ -42,6 +42,16 @@ updates:
       - dependency-name: 'three'
         update-types: [version-update:semver-minor, version-update:semver-patch]
       - dependency-name: '@types/three'
+      # Majors held 2026-11-25 (DEF-075). Recorded here, never as a PR comment (DEF-070).
+      # @types/node must track the runtime (Node 22 in CI/Docker), not the newest release.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+      # lucide-react 1.x renames icons and openai 7.x changes the client API; each needs a
+      # deliberate upgrade with the browser-flow suite, not a routine bump.
+      - dependency-name: 'lucide-react'
+        update-types: [version-update:semver-major]
+      - dependency-name: 'openai'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /

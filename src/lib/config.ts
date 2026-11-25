@@ -3,6 +3,12 @@
 // Nothing outside this file may read process.env or invent a fallback default. Changing a
 // provider URL, model, API version, limit, or timeout must be a config/env edit only.
 
+/** Like intEnv, but 0 is a valid value (intEnv treats anything below 1 as unset). */
+function intEnvAllowZero(raw: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(raw ?? '', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 /** Parse an integer env var, falling back to `fallback` when unset or malformed. */
 function intEnv(raw: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(raw ?? '', 10);
@@ -111,6 +117,20 @@ export const config = {
       process.env.NEXT_PUBLIC_REVERSE_GEOCODE_URL || 'https://nominatim.openstreetmap.org/reverse',
     gpsTimeoutMs: intEnv(process.env.NEXT_PUBLIC_GPS_TIMEOUT_MS, 10_000),
   },
+
+  // Team invitations. The database bounds the window to 1..720 hours (create_invite); this is the
+  // value the app asks for. A week covers "send the link, they sign up after the weekend".
+  team: {
+    inviteValidHours: intEnv(process.env.NEXT_PUBLIC_INVITE_VALID_HOURS, 168),
+  },
+
+  // Reports page: how far back the default report window reaches, in days.
+  reports: {
+    defaultRangeDays: intEnv(process.env.NEXT_PUBLIC_REPORTS_DEFAULT_RANGE_DAYS, 90),
+    // Hard ceiling on rows a single report reads, so a large tenant cannot pull its whole history
+    // into one browser tab.
+    maxRows: intEnv(process.env.NEXT_PUBLIC_REPORTS_MAX_ROWS, 5_000),
+  },
 } as const;
 
 // Server-only config (Vercel serverless functions only — never import in client code)
@@ -136,6 +156,55 @@ export const serverConfig = {
   stripe: {
     secretKey: secretEnv('STRIPE_SECRET_KEY', process.env.STRIPE_SECRET_KEY),
     webhookSecret: secretEnv('STRIPE_WEBHOOK_SECRET', process.env.STRIPE_WEBHOOK_SECRET),
+    // Prices are looked up by `<prefix>_<planId>_monthly`, never by a hardcoded price id, so the
+    // Stripe account can be swapped (test → live) without a code change. The prefix keeps this
+    // project's prices apart from any other project sharing the same Stripe account.
+    priceLookupPrefix: process.env.STRIPE_PRICE_LOOKUP_PREFIX || 'equipcert',
+    // Plans that may be bought self-serve. Enterprise is "Contact Sales" in plans.ts.
+    selfServePlans: (process.env.STRIPE_SELF_SERVE_PLANS || 'pro').split(',').map((p) => p.trim()),
+    // A test-mode secret key must never be swapped for a live one by accident: a live key is
+    // refused unless this is explicitly set, because live keys move real money (Rule 5).
+    allowLiveKeys: process.env.STRIPE_ALLOW_LIVE_KEYS === 'true',
+    // Checkout / portal requests per admin per hour.
+    rateLimit: intEnv(process.env.BILLING_RATE_LIMIT, 20),
+    rateWindowMs: intEnv(process.env.BILLING_RATE_WINDOW_MS, 60 * 60 * 1000),
+  },
+
+  // In-app help assistant (global Rule 24). OpenRouter's OpenAI-compatible endpoint.
+  //
+  // COST GUARD: the key is shared and has no spending cap, so the assistant only ever calls a
+  // model whose id ends in `:free` — the server refuses to start a request otherwise (see
+  // modelsAllowed in src/lib/assist/core.ts). Allowing a paid model is an explicit, separate decision.
+  assist: {
+    enabled: process.env.ASSIST_ENABLED !== 'false',
+    baseUrl: process.env.ASSIST_BASE_URL || 'https://openrouter.ai/api/v1',
+    apiKey: secretEnv('OPENROUTER_API_KEY', process.env.OPENROUTER_API_KEY),
+    // Tried in order; a free model that is busy or withdrawn falls through to the next. Measured
+    // 2026-11-25: nemotron-3.5-lightning ~8 s, nemotron-3.5-super ~26 s, the gemma-4 free tiers
+    // rate-limited upstream (429) — so the fast one goes first.
+    models: (process.env.ASSIST_MODELS || 'nvidia/nemotron-3.5-lightning:free,nvidia/nemotron-3.5-super-vl:free')
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean),
+    allowPaidModels: process.env.ASSIST_ALLOW_PAID_MODELS === 'true',
+    maxQuestionChars: intEnv(process.env.ASSIST_MAX_QUESTION_CHARS, 1_000),
+    maxHistoryTurns: intEnv(process.env.ASSIST_MAX_HISTORY_TURNS, 6),
+    // Includes a reasoning model's hidden reasoning tokens, which it spends first — 700 left
+    // nothing for the answer.
+    maxOutputTokens: intEnv(process.env.ASSIST_MAX_OUTPUT_TOKENS, 1_500),
+    // OpenRouter reasoning effort for reasoning models; the reasoning text is never returned.
+    reasoningEffort: (process.env.ASSIST_REASONING_EFFORT || 'low') as 'low' | 'medium' | 'high',
+    // Per model attempt. Every configured model × this must stay inside SELF_HOST_REQUEST_TIMEOUT_MS.
+    timeoutMs: intEnv(process.env.ASSIST_TIMEOUT_MS, 35_000),
+    rateLimit: intEnv(process.env.ASSIST_RATE_LIMIT, 30),
+    rateWindowMs: intEnv(process.env.ASSIST_RATE_WINDOW_MS, 60 * 60 * 1000),
+    knowledgeTopK: intEnv(process.env.ASSIST_KNOWLEDGE_TOP_K, 3),
+    // Each earlier turn sent back as context is clipped to this; the request schema accepts
+    // twice it so a long answer echoed back is clipped, not rejected.
+    maxTurnChars: intEnv(process.env.ASSIST_MAX_TURN_CHARS, 2_000),
+    maxAnswerChars: intEnv(process.env.ASSIST_MAX_ANSWER_CHARS, 4_000),
+    // Low: answers should restate the help articles, not improvise. Tenths, 0..10 → 0.0..1.0.
+    temperatureTenths: intEnvAllowZero(process.env.ASSIST_TEMPERATURE_TENTHS, 2),
   },
   // Bypasses RLS — server-side handlers only, never a NEXT_PUBLIC_ var.
   supabase: {

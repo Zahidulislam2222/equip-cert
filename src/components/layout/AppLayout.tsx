@@ -145,9 +145,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     variant="ghost"
                     size="icon"
                     onClick={signOut}
+                    aria-label="Sign out"
                     className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-4 w-4" aria-hidden />
                   </Button>
                 </div>
               </div>
@@ -260,17 +261,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               variant="ghost"
               size="icon"
               onClick={() => setCollapsed(!collapsed)}
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-expanded={!collapsed}
               className="hidden lg:flex text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {collapsed ? <ChevronRight className="h-4 w-4" aria-hidden /> : <ChevronLeft className="h-4 w-4" aria-hidden />}
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={signOut}
+              aria-label="Sign out"
               className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" aria-hidden />
             </Button>
           </div>
         </div>
@@ -286,8 +290,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               size="icon"
               className="lg:hidden"
               onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation menu"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" aria-hidden />
             </Button>
             <h2 className="text-lg font-semibold text-foreground capitalize">
               {navItems.find((i) => i.href === pathname)?.label || 'Dashboard'}

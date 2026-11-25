@@ -1,0 +1,7 @@
+{
+  "$comment": "Single owner of the e-signature consent wording (ESIGN Act, 15 U.S.C. §7001(c)). The web client renders it from here; the Flutter client carries an identical copy that mobile/test/esign_consent_contract_test.dart compares against this file. Change the wording => change the version: the version is what profiles.esign_consent_version records as evidence of what the person saw.",
+  "version": "2026-11-25",
+  "title": "Electronic signature consent",
+  "statement": "By ticking this box, you affirmatively consent to sign this equipment inspection record electronically under the ESIGN Act (15 U.S.C. §7001). Your electronic signature has the same legal effect as a handwritten signature. Signed records cannot be modified after submission. You may withdraw consent by contacting your administrator.",
+  "label": "I agree to sign electronically"
+}

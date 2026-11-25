@@ -225,8 +225,8 @@ export function InspectionsTable() {
                             <Camera className="h-4 w-4" />
                         </Button>
                         ) : (
-                        <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
-                            <Camera className="h-4 w-4 opacity-50" />
+                        <Button variant="ghost" size="sm" disabled className="text-muted-foreground" aria-label={`No photo for ${inspection.equipment_name}`}>
+                            <Camera className="h-4 w-4 opacity-50" aria-hidden />
                         </Button>
                         )}
 
@@ -237,6 +237,7 @@ export function InspectionsTable() {
                             className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                             onClick={() => generateAndDownloadPDF(inspection)}
                             disabled={downloadingId === inspection.id}
+                            aria-label={`Download PDF report for ${inspection.equipment_name}`}
                         >
                             {downloadingId === inspection.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />

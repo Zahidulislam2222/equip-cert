@@ -138,8 +138,38 @@ sessions.
 | 2 | minutes, with point-in-time recovery enabled (paid add-on) | ≤ 15 min origin (redeploy manifests) | PITR + declarative manifests |
 
 The origin is rebuilt from Git plus `CREDENTIALS.md`; it holds no data. Every RPO above is
-therefore a database property. **No restore drill has been run** — until one is, the RTO column is
-a target with no evidence behind it.
+therefore a database property.
+
+### Restore drill — first run 2026-11-25 (measured, not a target)
+
+`node tests/with_db_password.mjs drill:restore` (`scripts/restore-drill.mjs`) dumps the live data,
+builds an empty database from `supabase/migrations/` alone, restores the dump into it and compares
+row counts table by table.
+
+| Step | Time (developer machine, local Docker) |
+|---|---|
+| Logical dump of live `public` + `auth` data (72 KiB) | 24–27 s |
+| Schema rebuilt from the migrations | 38–42 s |
+| Data restored | 0.3 s |
+| **Total, dump to usable database** | **≈ 68 s** |
+
+Result: **every live row present** — 152 inspections, 28 organisations, 16 equipment, 56 audit
+entries, 12 profiles, 12 accounts, 3 plan rows; tables added by the unreleased migration were
+empty on both sides as expected.
+
+What this does and does not show:
+
+- It proves the free-tier recovery path works: **the migrations plus a logical dump are a
+  complete database backup**, and the schema in Git can carry live data.
+- From `auth`, only accounts (`users`, `identities`) are restored. Sessions, refresh tokens and
+  MFA challenges are deliberately left out — a restore makes everyone sign in again.
+- **Storage objects (photographs, signatures) are files, not rows, and are not in the dump.** The
+  restored records point at files that only the original project holds. Backing those up is an
+  open gap.
+- The RTO is for this data volume into a local database. A restore into a NEW hosted project adds
+  project creation and re-pointing the app (a rebuild, because `NEXT_PUBLIC_*` values are baked
+  into the export). RPO is still "age of the last dump": nothing schedules the dump yet.
+- The restored copy held live personal data, so the drill wipes the local database when it ends.
 
 ---
 

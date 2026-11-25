@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/models.dart';
 import '../data/supabase_service.dart';
-import '../util/uuid.dart';
 
 /// Authentication and tenant provisioning.
 ///
@@ -94,45 +93,20 @@ class AuthRepository {
 
   /// Make sure the signed-in user has an organisation and a profile.
   ///
-  /// ---------------------------------------------------------------------------------------
-  /// WHY THIS IS A SEPARATE STEP FROM SIGNUP
+  /// Runs after a confirmed sign-in, never at `auth.signUp()` time: there the caller is still
+  /// `anon` and nothing can be created for them (DEF-045).
   ///
-  /// Both inserts below target policies declared `FOR INSERT TO authenticated`. At
-  /// `auth.signUp()` time the caller is still `anon` and `auth.uid()` is NULL, so both are
-  /// denied — the account is created and the tenant is not, and the person is stranded with an
-  /// account they can never use. That is DEF-045, and it is the only path through the web
-  /// client's signup today.
+  /// Provisioning is ONE server-side transaction, `public.provision_account()` (migration
+  /// `20261125000100`). The client used to insert the organisation and the profile itself,
+  /// which had two problems: a crash between the two inserts orphaned an organisation, and the
+  /// `organizations_insert_during_signup` policy those inserts needed also let ANY signed-in
+  /// account create a profile in an existing tenant as its admin (DEF-076). Both policies are
+  /// gone; the function reads `org_name` / `full_name` from the caller's own auth metadata,
+  /// handles slug collisions, and makes the creator the admin.
   ///
-  /// Running here instead means the caller holds a real session, so `auth.uid()` resolves and
-  /// `organizations_insert_during_signup` matches its own stated intent: *"a user with no
-  /// profile yet is creating the organisation they are about to join."*
-  ///
-  /// ---------------------------------------------------------------------------------------
-  /// NOTHING IS READ BACK — THE ORG ID IS GENERATED HERE
-  ///
-  /// `organizations.id` has a `gen_random_uuid()` default, so the obvious shape is
-  /// `.insert(...).select().single()`. It does not work under RLS. PostgreSQL applies SELECT
-  /// policies to a `RETURNING` clause, and `organizations_select_own` matches on
-  /// `id = app.current_org_id()` — which reads from `profiles`, which is exactly what does not
-  /// exist yet. The row would be inserted and then come back empty.
-  ///
-  /// Supplying the id removes the read entirely. See [uuidV4].
-  ///
-  /// ---------------------------------------------------------------------------------------
-  /// IT IS IDEMPOTENT, AND THAT IS THE POINT
-  ///
-  /// Called after every sign-in, not only the first. The early return costs one indexed lookup
-  /// on `profiles.user_id` (UNIQUE), and in exchange an account stranded by DEF-045 provisions
-  /// itself on its next sign-in — the fix is retroactive, with no migration and no support
-  /// ticket.
-  ///
-  /// The honest limit: if the organisation insert succeeds and the profile insert then fails —
-  /// a dropped connection in a plant room, the OS killing the app — the retry creates a SECOND
-  /// organisation and the first is orphaned. It is invisible to everyone, including its
-  /// creator, because `current_org_id()` reads from `profiles` and no profile references it.
-  /// So it is a wasted row, not a wrong one, and clearing it is an owner operation with the
-  /// service-role key. Closing that window properly needs both inserts in one transaction,
-  /// which means a `SECURITY DEFINER` RPC and a migration — queued, not pretended.
+  /// Idempotent and called after every sign-in, so an account stranded by DEF-045 provisions
+  /// itself on its next sign-in. An account with no `org_name` is an invited person: it joins
+  /// through the invitation link (on the web) and is never minted a tenant of its own here.
   Future<void> ensureProvisioned() async {
     final User? user = currentUser;
     if (user == null) return;
@@ -141,74 +115,9 @@ class AuthRepository {
 
     final Map<String, dynamic> metadata =
         user.userMetadata ?? const <String, dynamic>{};
-    final String orgName = _clamp(_string(metadata[orgNameKey]));
+    if (_clamp(_string(metadata[orgNameKey])).isEmpty) return;
 
-    // An account created by an admin invite has no org_name — it is joining an EXISTING
-    // tenant, and the invite flow writes its profile. Minting a tenant here would silently
-    // fork that person off into an empty organisation of their own.
-    if (orgName.isEmpty) return;
-
-    // `full_name` is NOT NULL with a 1..200 length check, so an empty value is a constraint
-    // violation, not a blank field. The email is the only other identifier guaranteed present.
-    final String fullName = switch ((
-      _clamp(_string(metadata[fullNameKey])),
-      user.email,
-    )) {
-      (final String name, _) when name.isNotEmpty => name,
-      (_, final String? email) when email != null && email.isNotEmpty => _clamp(
-        email,
-      ),
-      _ => 'Account owner',
-    };
-
-    final String orgId = uuidV4();
-    await _insertOrganization(id: orgId, name: orgName);
-
-    await _client.from('profiles').insert(<String, dynamic>{
-      'user_id': user.id,
-      'org_id': orgId,
-      'full_name': fullName,
-      // The creator of a tenant is its admin. Every subsequent member is created by the invite
-      // flow, which does not let the invitee choose their own role.
-      'role': UserRole.admin.wire,
-    });
-  }
-
-  /// Insert the organisation, working around the UNIQUE slug.
-  ///
-  /// `organizations.slug` is UNIQUE, and "Acme Fire Safety" is not a rare company name. The
-  /// second one to sign up would otherwise get an opaque `23505` and a dead signup. The retry
-  /// appends a random token — this cannot be resolved by reading first, because the caller has
-  /// no SELECT visibility on a tenant they do not belong to, so the constraint is the only
-  /// thing that can report the collision.
-  Future<void> _insertOrganization({
-    required String id,
-    required String name,
-  }) async {
-    // `slugify` returns empty when the name has no alphanumeric content — "洪水" or "!!!" are
-    // both valid `organizations.name` values (the CHECK there only requires 1..200 non-blank
-    // characters) and both slugify to nothing, which the slug CHECK rejects. A generated slug
-    // is the only option: the alternative is refusing a legitimate company name.
-    final String base = slugify(name);
-    for (int attempt = 0; ; attempt++) {
-      final String slug = switch (attempt) {
-        _ when base.isEmpty => 'org-${shortToken()}',
-        0 => base,
-        _ => '${_trimSlug(base)}-${shortToken()}',
-      };
-      try {
-        await _client.from('organizations').insert(<String, dynamic>{
-          'id': id,
-          'name': name,
-          'slug': slug,
-        });
-        return;
-      } on PostgrestException catch (error) {
-        // 23505 = unique_violation. Anything else — a policy denial, a check constraint, a
-        // network failure — is a real error and must surface, not be retried into a loop.
-        if (error.code != '23505' || attempt >= 4) rethrow;
-      }
-    }
+    await _client.rpc<dynamic>('provision_account');
   }
 
   static String _string(Object? value) => value is String ? value : '';
@@ -219,14 +128,13 @@ class AuthRepository {
         ? trimmed
         : trimmed.substring(0, maxNameLength);
   }
-
-  /// Leave room for `-` plus a 6-character token inside the slug's 63-character ceiling.
-  static String _trimSlug(String base) => base.length <= 56
-      ? base
-      : base.substring(0, 56).replaceAll(RegExp(r'-+$'), '');
 }
 
 /// URL-safe organisation slug.
+///
+/// Since migration `20261125000100` the server (`provision_account`) generates the slug; this
+/// function is kept as the client-side statement of the same CHECK contract and is exercised by
+/// `test/slug_test.dart`.
 ///
 /// The column is not merely `TEXT`:
 ///

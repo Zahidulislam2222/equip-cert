@@ -76,6 +76,46 @@ jobs:
         run: npm run build:server
 
   # ---------------------------------------------------------------------------
+  # Local stack: every migration applied to an empty database on the real engine, then the
+  # tenancy/invite/consent integration suite and the browser flows (Playwright + axe) against it.
+  # Needs no secrets and touches no hosted project — the URL and keys come from `supabase status`
+  # and e2e/local/stack.mjs refuses anything that is not loopback. No external AI or Stripe calls.
+  # ---------------------------------------------------------------------------
+  local:
+    name: Local stack + browser flows
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Start the local Supabase stack (applies every migration from scratch)
+        run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+
+      - name: Tenancy, invitations, billing guard, e-sign consent (integration)
+        run: npm run test:local
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser flows + accessibility (desktop and phone)
+        run: npm run test:browser
+
+      - name: Keep failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-artifacts
+          path: tests/browser-artifacts
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
   # Everything that can only be decided by asking the real services.
   #
   # This is the class of gate whose absence let DEF-007 (a backend that was not

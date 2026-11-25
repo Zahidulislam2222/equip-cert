@@ -84,6 +84,8 @@ export function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-expanded={isOpen}
         className="relative flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted transition-colors"
       >
         <Bell className="h-5 w-5 text-foreground" />
@@ -106,7 +108,7 @@ export function NotificationBell() {
                     Mark all read
                   </button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="rounded-lg p-1 hover:bg-muted">
+                <button onClick={() => setIsOpen(false)} aria-label="Close notifications" className="rounded-lg p-1 hover:bg-muted">
                   <X className="h-4 w-4 text-muted-foreground" />
                 </button>
               </div>

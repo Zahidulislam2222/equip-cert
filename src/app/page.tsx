@@ -16,6 +16,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { InspectionHero } from '@/components/scroll/InspectionHero';
+import { AuthRedirectHandoff } from '@/components/auth/AuthRedirectHandoff';
 import { config } from '@/lib/config';
 import { PLANS, PLAN_ORDER, formatPlanPrice } from '@/lib/plans';
 import { useMagnetic, useTilt } from '@/hooks/use-pointer-motion';
@@ -185,6 +186,7 @@ function EvidenceCard({
 export default function LandingPage() {
   return (
     <div className="min-h-dvh bg-background">
+      <AuthRedirectHandoff />
       <a
         href="#content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"

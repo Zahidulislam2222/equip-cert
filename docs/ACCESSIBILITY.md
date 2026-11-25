@@ -4,7 +4,7 @@
 ADA Title II requires of public-sector customers by 2027–2028, and the level EN 301 549 points to
 in Europe. See the [legal map](compliance/README.md) §7.
 
-**Status (2026-09-24): partially conformant, self-assessed.** No third-party audit has been done,
+**Status (2026-11-25): partially conformant, self-assessed.** No third-party audit has been done,
 so no conformance claim is made. The audit is on the [roadmap](ROADMAP.md), Phase 2.
 
 ---
@@ -21,12 +21,15 @@ so no conformance claim is made. The audit is on the [roadmap](ROADMAP.md), Phas
 | **Skip link** on the landing page, `lang="en"` on every page, `aria-label` / `aria-expanded` / `aria-pressed` on interactive widgets | `src/app/page.tsx`, `src/app/layout.tsx` | — |
 | **Consent choices at equal prominence** | Cookie banner | Also a legal requirement; the reject path is as easy as accept |
 | **A stalled video falls back** to a still image plus the text list | Hero | An 8-second budget; `error` alone does not fire for every failure |
+| **Automated axe checks on real pages.** `npm run test:browser` drives the built app against a local database (Playwright) and runs axe (WCAG 2.0–2.2 A/AA rules) on the public pages, dashboard, settings, team, reports and the open help dialog, at desktop and phone width. Serious and critical findings fail the run | `e2e/browser/`; CI job `local` | First run (2026-11-25) found and fixed: unnamed icon buttons in the app shell, notifications, dashboard table and inspection screen (pass/fail buttons now say which item), and a hero control whose accessible name did not contain its visible text |
+| **Help assistant is keyboard- and screen-reader-usable** | `src/components/shared/HelpAssistant.tsx`, `mobile/lib/src/screens/help_screen.dart` | Labelled dialog, Escape closes and returns focus, live region for answers, Stop and restart buttons |
 
 ## Known gaps
 
 | Gap | Impact | Plan |
 |---|---|---|
-| No automated accessibility checks (e.g. axe) in CI | Regressions caught only by manual review | Add to CI with the web test suite |
+| Three small texts below 4.5:1 (DEF-080): pending lines in the landing-page inspection record, the landing step captions, and the cookie-name captions in the consent controls | Low-vision users may not read them; the same information is available as text elsewhere | Owner decision — the fix is a visual change. Each is excused **by name** in the browser suite, so any new contrast failure still fails |
+| On a phone, the consent banner covers the Help button until it is answered | One extra step before Help is reachable | Acceptable by design (consent first); revisit with the audit |
 | No screen-reader walkthrough of the manager dashboard and technician flow | Unknown issues likely in data tables and charts | Part of the audit |
 | The signature pad needs pointer or touch drawing | Harder for users with limited fine motor control | Offer a typed-name signature with the same consent and attribution |
 | The skip link exists on the landing page only, not in the app shell | Keyboard users tab through the navigation on every app page | Move it into the shared layout |

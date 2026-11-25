@@ -127,6 +127,13 @@ class ChecklistEntry {
   }
 }
 
+/// Plans that include electronic signatures. Mirrors `signatures` in `canAccess`
+/// (src/lib/plans.ts) — test/plan_gating_contract_test.dart parses that file and fails if they
+/// drift. The database (`enforce_plan_limits`) is the enforcer; this only decides what to show.
+const Set<String> signaturePlans = <String>{'pro', 'enterprise'};
+
+bool planAllowsSignatures(String plan) => signaturePlans.contains(plan);
+
 @immutable
 class Organization {
   const Organization({

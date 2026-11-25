@@ -18,7 +18,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../app/router.dart';
 import '../auth/session_controller.dart';
 import '../config/app_config.dart';
 import '../data/models.dart';
@@ -98,6 +100,14 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
             ],
+
+            AppButton(
+              label: 'Help and questions',
+              variant: AppButtonVariant.secondary,
+              icon: Icons.help_outline_rounded,
+              onPressed: () => context.push(Routes.help),
+            ),
+            const SizedBox(height: 24),
 
             Text(
               'Offline queue',

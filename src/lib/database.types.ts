@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -76,6 +76,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "audit_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          organization_id: string | null
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          organization_id?: string | null
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          organization_id?: string | null
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -482,6 +511,67 @@ export type Database = {
           },
         ]
       }
+      organization_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          organization_id: string
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          id?: string
+          organization_id: string
+          revoked_at?: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invites_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_invites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -563,6 +653,7 @@ export type Database = {
           created_at: string
           esign_consent: boolean
           esign_consent_at: string | null
+          esign_consent_version: string | null
           full_name: string
           id: string
           org_id: string
@@ -577,6 +668,7 @@ export type Database = {
           created_at?: string
           esign_consent?: boolean
           esign_consent_at?: string | null
+          esign_consent_version?: string | null
           full_name: string
           id?: string
           org_id: string
@@ -591,6 +683,7 @@ export type Database = {
           created_at?: string
           esign_consent?: boolean
           esign_consent_at?: string | null
+          esign_consent_version?: string | null
           full_name?: string
           id?: string
           org_id?: string
@@ -675,6 +768,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: { Args: { p_token: string }; Returns: string }
+      create_invite: {
+        Args: {
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_valid_hours: number
+        }
+        Returns: {
+          expires_at: string
+          invite_id: string
+          token: string
+        }[]
+      }
       erase_subject: {
         Args: { p_profile_id: string }
         Returns: {
@@ -682,6 +787,9 @@ export type Database = {
           inspections_anonymized: number
         }[]
       }
+      provision_account: { Args: never; Returns: string }
+      record_esign_consent: { Args: { p_version: string }; Returns: string }
+      revoke_invite: { Args: { p_invite_id: string }; Returns: undefined }
     }
     Enums: {
       consent_method: "web_form" | "mobile_app" | "api" | "import"

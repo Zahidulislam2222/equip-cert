@@ -1,0 +1,150 @@
+{
+  "$comment": "Approved knowledge for the in-app help assistant (global Rule 24). Owner: the EquipCert product owner. Every article must describe what the app ACTUALLY does today — verify against the code before changing one, and bump `version` on every change (it is returned with each answer so a wrong answer can be traced to the text it came from). Roles: which roles an article applies to; 'all' = everyone signed in.",
+  "version": "2026-11-25",
+  "articles": [
+    {
+      "id": "getting-started",
+      "title": "Getting started",
+      "roles": ["all"],
+      "keywords": ["start", "begin", "new", "first", "setup", "sign up", "signup", "account", "organisation", "organization", "create"],
+      "body": "Create an account at Sign up with your name, company name, email and a password of at least 12 characters. If asked, confirm your email with the link we send, then sign in. The first person in a company becomes its administrator. Administrators add equipment under Equipment, invite colleagues under Team, and see results on the Dashboard and Reports. Technicians use New Inspection to inspect equipment and file signed records.",
+      "link": "/auth/signup"
+    },
+    {
+      "id": "invite-team",
+      "title": "Inviting colleagues and roles",
+      "roles": ["admin", "manager"],
+      "keywords": ["invite", "invitation", "add user", "add member", "colleague", "team", "role", "technician", "manager", "admin", "administrator", "link", "seat"],
+      "body": "Administrators open Team and choose Create invitation link, picking the role: Technician (inspects and signs) or Manager (also manages equipment and schedules). The link is shown once, works once and expires after a week; send it to the person yourself. They open it, create an account, and join your organisation with that role. Open invitations can be revoked. An administrator can change another member's role or remove them, but never their own role. Invitations count against the seats your plan allows — the Free plan has one seat, so inviting needs Pro.",
+      "link": "/app/team"
+    },
+    {
+      "id": "invite-problems",
+      "title": "An invitation link does not work",
+      "roles": ["all"],
+      "keywords": ["invitation", "invite", "invalid", "expired", "link", "join", "not working", "error", "already belongs"],
+      "body": "An invitation is refused when it has expired, was already used, or was revoked — the message is the same for all three on purpose. Ask your administrator for a new link. If you created an account without the link, sign in and paste the whole link on the 'Finish setting up' screen. An account that already belongs to an organisation cannot join a second one.",
+      "link": "/app/team"
+    },
+    {
+      "id": "inspect-flow",
+      "title": "Doing an inspection",
+      "roles": ["technician", "manager", "admin"],
+      "keywords": ["inspect", "inspection", "checklist", "new inspection", "pass", "fail", "how do i", "submit", "file", "record"],
+      "body": "Open New Inspection. Choose Scan Equipment to take a photo and let AI identify the equipment, or Manual Mode to pick the checklist yourself. Mark every checklist item Pass or Fail. Your location is captured with the record. When every item is answered, consent to sign electronically, sign, and submit. Any Fail marks the inspection Action Required and lets you raise a corrective action. On the Free plan the record is filed without a signature, because signatures are a Pro feature.",
+      "link": "/app/inspect"
+    },
+    {
+      "id": "ai-analysis",
+      "title": "AI equipment identification",
+      "roles": ["all"],
+      "keywords": ["ai", "artificial intelligence", "scan", "photo", "identify", "camera", "vision", "machine", "generated", "ai act"],
+      "body": "In Scan Equipment mode a photo is sent to an AI model that suggests what the equipment is, so the right checklist loads. The suggestion is labelled as AI-generated, and the record stores which AI system was used (EU AI Act Article 50). The AI never fills in the checklist or signs: the person who signs is always the inspector of record. If the AI is unavailable, use Manual Mode.",
+      "link": "/app/inspect"
+    },
+    {
+      "id": "esign",
+      "title": "Electronic signatures and consent",
+      "roles": ["all"],
+      "keywords": ["sign", "signature", "esign", "e-sign", "consent", "legal", "agree", "electronically"],
+      "body": "Before the signature pad accepts a signature you must tick the consent box agreeing to sign electronically (ESIGN Act). The server records that you consented, when, and to which version of the wording. Your electronic signature has the same legal effect as a handwritten one. Consent can be withdrawn only by contacting your administrator, not by editing your profile. Signatures are included in the Pro and Enterprise plans.",
+      "link": "/app/inspect"
+    },
+    {
+      "id": "immutable",
+      "title": "Why a signed inspection cannot be changed",
+      "roles": ["all"],
+      "keywords": ["edit", "change", "delete", "mistake", "correct", "wrong", "immutable", "locked", "modify", "undo"],
+      "body": "Once an inspection is signed it is locked: nobody — not an administrator, not support — can edit or delete it. That is what makes it evidence. If a signed record is wrong, file a new inspection with the correct findings; the history keeps both.",
+      "link": "/app/inspections"
+    },
+    {
+      "id": "offline",
+      "title": "Working without signal",
+      "roles": ["technician", "manager", "admin"],
+      "keywords": ["offline", "no signal", "internet", "connection", "sync", "queue", "queued", "pending", "upload"],
+      "body": "If you lose connection, finish and submit the inspection as usual: it is saved on the device, including the photo and signature, and the banner shows how many are queued. When the connection returns they sync automatically, or press Sync now. Each queued item is checked for corruption before it is uploaded. Do not clear the browser's site data while items are queued.",
+      "link": "/app/inspect"
+    },
+    {
+      "id": "corrective",
+      "title": "Corrective actions",
+      "roles": ["all"],
+      "keywords": ["corrective", "action", "fix", "repair", "failed", "fail", "follow up", "defect", "resolve", "overdue"],
+      "body": "When an inspection item fails you can raise a corrective action describing the defect, its severity (critical, major or minor), a due date and a photo. Open actions appear on the Dashboard. The person assigned, or a manager, moves an action to In Progress and then Resolved; resolving records who resolved it and when. Actions past their due date count as overdue in Reports. Corrective actions are a Pro feature.",
+      "link": "/app/dashboard"
+    },
+    {
+      "id": "equipment",
+      "title": "Equipment register",
+      "roles": ["admin", "manager"],
+      "keywords": ["equipment", "asset", "add equipment", "register", "serial", "location", "extinguisher", "due date", "retire", "out of service"],
+      "body": "Managers and administrators add equipment under Equipment with a name, type, serial number and location. Serial numbers are unique within your organisation. Each item has a status — active, out of service or retired — and a next due date. Active equipment past its due date counts as overdue in Reports. Technicians cannot change the register.",
+      "link": "/app/equipment"
+    },
+    {
+      "id": "schedule",
+      "title": "Schedule",
+      "roles": ["all"],
+      "keywords": ["schedule", "due", "upcoming", "recurring", "frequency", "monthly", "weekly", "annual", "calendar", "when"],
+      "body": "Schedule lists recurring inspections with their frequency (daily to annually) and how many days remain until each is due. Scheduling is a Pro feature.",
+      "link": "/app/schedule"
+    },
+    {
+      "id": "reports",
+      "title": "Reports and CSV export",
+      "roles": ["admin", "manager"],
+      "keywords": ["report", "reports", "export", "csv", "excel", "download", "pass rate", "statistics", "analytics", "audit", "pdf"],
+      "body": "Reports shows the last 30, 90 or 365 days: number of inspections, pass rate, the share signed and AI-assisted, open and overdue corrective actions, overdue equipment, results by week and by inspector. CSV downloads every inspection in the period and opens safely in Excel. A single inspection can be downloaded as a PDF from the Inspections list. Reports are a Pro feature.",
+      "link": "/app/reports"
+    },
+    {
+      "id": "plans",
+      "title": "Plans, limits and billing",
+      "roles": ["all"],
+      "keywords": ["plan", "pricing", "price", "upgrade", "pro", "free", "enterprise", "billing", "pay", "payment", "subscription", "limit", "cancel", "invoice", "card"],
+      "body": "Free: one user and 10 inspections a month, unsigned. Pro adds unlimited inspections, signatures, corrective actions, scheduling, team and reports, priced per user per month. Enterprise is arranged with sales. An administrator upgrades in Settings → Plan & billing through Stripe, and uses Manage billing to change seats, update the card or cancel. The plan changes only after Stripe confirms payment. This deployment runs Stripe in test mode, so no real money moves.",
+      "link": "/app/settings"
+    },
+    {
+      "id": "limit-reached",
+      "title": "\"Plan limit reached\"",
+      "roles": ["all"],
+      "keywords": ["limit", "reached", "plan limit", "cannot", "blocked", "10 inspections", "upgrade to continue", "seat"],
+      "body": "The database enforces your plan's limits, so the app cannot bypass them. 'Plan limit reached: 10 inspections per month' resets on the first of next month, or an administrator can upgrade to Pro. 'Plan limit reached: 1 user(s)' means every seat is used; upgrade or revoke an open invitation.",
+      "link": "/app/settings"
+    },
+    {
+      "id": "privacy",
+      "title": "Your data and privacy requests",
+      "roles": ["all"],
+      "keywords": ["privacy", "gdpr", "data", "delete my data", "erase", "export", "access", "personal", "ccpa", "request", "cookies", "consent"],
+      "body": "You can ask for a copy of your personal data, a correction, or erasure through the privacy request page (/privacy/requests); an administrator of your organisation handles it within the legal deadline. Erasure removes your name from the system but keeps the inspection findings your employer is legally required to retain — they are shown as by a redacted inspector. Cookie choices are in Settings. The Privacy Policy explains what is collected and why.",
+      "link": "/privacy/requests"
+    },
+    {
+      "id": "account-security",
+      "title": "Signing in and account security",
+      "roles": ["all"],
+      "keywords": ["password", "login", "log in", "sign in", "forgot", "reset", "magic link", "locked out", "security", "breach", "email"],
+      "body": "Sign in with email and password, or request a one-time sign-in link by email. Passwords need at least 12 characters and are checked against known breach lists without your password ever leaving the device. If you cannot sign in, check that you confirmed your email; then use the sign-in link option. Signed-in sessions refresh automatically.",
+      "link": "/auth/login"
+    },
+    {
+      "id": "mobile-app",
+      "title": "The mobile app",
+      "roles": ["all"],
+      "keywords": ["mobile", "android", "ios", "iphone", "phone", "app", "tablet", "download"],
+      "body": "EquipCert also has a native Android and iOS app for technicians that works offline and uses the same account and organisation. It is not yet published in the app stores. The website works on phones too.",
+      "link": "/app/inspect"
+    },
+    {
+      "id": "assistant-about",
+      "title": "About this assistant",
+      "roles": ["all"],
+      "keywords": ["assistant", "you", "bot", "help", "human", "support", "contact", "who are you", "ai"],
+      "body": "This help assistant is an AI. It answers from EquipCert's help articles and, when you ask about your account, from a small read-only summary of your own organisation's data. It cannot change anything, sign, or see other organisations. It can be wrong — check important answers against the linked page. For anything it cannot resolve, contact your organisation's administrator (listed under Team); for personal-data questions use the privacy request page.",
+      "link": "/app/team"
+    }
+  ]
+}

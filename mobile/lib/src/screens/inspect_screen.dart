@@ -280,10 +280,19 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
   bool get _pendingItems =>
       _checklist.any((ChecklistEntry e) => e.status == ChecklistStatus.pending);
 
+  /// Signatures are a paid-plan feature and the database rejects one on the free plan
+  /// (`enforce_plan_limits`). Requiring one there meant a free organisation could not file a
+  /// single inspection (DEF-079) — free records are filed unsigned, and the screen says so.
+  bool get _signaturesAllowed {
+    final String? plan = ref.read(sessionProvider).value?.organization.plan;
+    return plan != null && planAllowsSignatures(plan);
+  }
+
   String? get _blocker {
     if (_equipmentName.text.trim().isEmpty) return 'Enter what you inspected.';
     if (_checklist.isEmpty) return 'The checklist has not loaded yet.';
     if (_pendingItems) return 'Answer every checklist item.';
+    if (!_signaturesAllowed) return null;
     if (!_esignConsented) return 'Agree to sign electronically, then sign.';
     if (_signature.isEmpty) {
       return 'Sign to confirm you carried out this inspection.';
@@ -311,7 +320,9 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
       _error = null;
     });
 
-    final Uint8List? signature = await _signature.toPng();
+    final Uint8List? signature = _signaturesAllowed
+        ? await _signature.toPng()
+        : null;
     final CapturedPhoto? photo = _photo;
 
     final Map<String, Object?> deviceInfo = <String, Object?>{
@@ -360,6 +371,13 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
                 format: photo.format,
               );
 
+        // Consent evidence before the signed record exists (DEF-074).
+        if (signature != null) {
+          await ref
+              .read(inspectionRepositoryProvider)
+              .recordEsignConsent(ESignConsent.version);
+        }
+
         final String? signaturePath = signature == null
             ? null
             : await evidence.upload(
@@ -396,6 +414,7 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
             photo: photo?.bytes,
             photoFormat: photo?.format,
             signature: signature,
+            consentVersion: ESignConsent.version,
           );
       await ref.read(syncProvider.notifier).refreshPending();
       if (!mounted) return;
@@ -708,17 +727,25 @@ class _InspectScreenState extends ConsumerState<InspectScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ESignConsent(
-          consented: _esignConsented,
-          enabled: !_submitting,
-          onChanged: (bool value) {
-            setState(() => _esignConsented = value);
-            // A signature must never outlive the consent it was given under.
-            if (!value) _signature.clear();
-          },
-        ),
-        const SizedBox(height: 12),
-        SignaturePad(controller: _signature, enabled: _esignConsented),
+        if (_signaturesAllowed) ...<Widget>[
+          ESignConsent(
+            consented: _esignConsented,
+            enabled: !_submitting,
+            onChanged: (bool value) {
+              setState(() => _esignConsented = value);
+              // A signature must never outlive the consent it was given under.
+              if (!value) _signature.clear();
+            },
+          ),
+          const SizedBox(height: 12),
+          SignaturePad(controller: _signature, enabled: _esignConsented),
+        ] else
+          const MessageBanner(
+            message:
+                'Electronic signatures are part of the Pro plan. On your current plan this '
+                'inspection is filed unsigned.',
+            tone: BannerTone.info,
+          ),
 
         const SizedBox(height: 24),
         if (_error != null) ...<Widget>[

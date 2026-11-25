@@ -350,7 +350,7 @@ export function InspectionModel() {
               <ControlButton onClick={() => rotate(1)} label="Rotate right">
                 <RotateCw className="h-4 w-4" strokeWidth={1.9} />
               </ControlButton>
-              <ControlButton onClick={toggleExploded} label="Separate the parts" pressed={exploded}>
+              <ControlButton onClick={toggleExploded} label={exploded ? 'Reassemble' : 'Separate parts'} pressed={exploded}>
                 {exploded ? <Box className="h-4 w-4" strokeWidth={1.9} /> : <Maximize2 className="h-4 w-4" strokeWidth={1.9} />}
                 <span className="text-[13px] font-medium">{exploded ? 'Reassemble' : 'Separate parts'}</span>
               </ControlButton>

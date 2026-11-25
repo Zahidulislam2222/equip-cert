@@ -198,6 +198,15 @@ class _SyncBanner extends ConsumerWidget {
       );
     }
 
+    if (report != null && report.held > 0) {
+      return MessageBanner(
+        message:
+            '${report.held} signed inspection${report.held == 1 ? ' is' : 's are'} waiting for '
+            'the person who signed to sign in on this phone. They are kept safely until then.',
+        tone: BannerTone.warning,
+      );
+    }
+
     return MessageBanner(
       message: state.online
           ? '${state.pending} inspection${state.pending == 1 ? '' : 's'} waiting to be filed.'

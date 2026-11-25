@@ -83,6 +83,12 @@ memory/
 # Manual/scratch test scripts (Rule 13) — local tooling, never committed
 tests/
 
+# Ten-phase build plan / tracker (Rule 25) — names owner actions and open defects
+TASKS.md
+
+# Private study notes (Rule 21) — interview prep, never published
+study/
+
 # Local documentation view (Google Doc mirror + client assets)
 my-project-view/
 

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { getProfile, getOrganization } from '@/lib/auth';
+import { getProfile, getOrganization, completeOnboarding, discardPendingInvite } from '@/lib/auth';
 import type { Profile, Organization } from '@/lib/auth';
 
 interface AuthContextType {
@@ -12,6 +12,8 @@ interface AuthContextType {
   profile: Profile | null;
   organization: Organization | null;
   isLoading: boolean;
+  /** Why automatic onboarding failed (e.g. an expired invitation), shown on the onboarding screen. */
+  onboardingError: string | null;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -22,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   organization: null,
   isLoading: true,
+  onboardingError: null,
   signOut: async () => {},
   refreshProfile: async () => {},
 });
@@ -32,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
   const loadUserData = useCallback(async (currentUser: User | null) => {
     if (!currentUser) {
@@ -40,7 +44,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const userProfile = await getProfile(currentUser.id);
+    let userProfile = await getProfile(currentUser.id);
+
+    // A confirmed account with no profile: finish onboarding here, in a signed-in session —
+    // redeem a parked invitation, or create the organisation named at signup (DEF-045). Both
+    // are one server-side transaction, so a dropped connection cannot strand half a tenant.
+    if (!userProfile) {
+      try {
+        if (await completeOnboarding()) {
+          setOnboardingError(null);
+          userProfile = await getProfile(currentUser.id);
+        }
+      } catch (err) {
+        setOnboardingError(err instanceof Error ? err.message : 'Could not finish setting up your account.');
+      }
+    }
+    // Already in an organisation: an invitation parked on this device is not for this account
+    // (one organisation per account), and must not wait for the next one.
+    if (userProfile) discardPendingInvite();
     setProfile(userProfile);
 
     if (userProfile?.org_id) {
@@ -83,7 +104,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, profile, organization, isLoading, signOut: handleSignOut, refreshProfile }}
+      value={{
+        user,
+        session,
+        profile,
+        organization,
+        isLoading,
+        onboardingError,
+        signOut: handleSignOut,
+        refreshProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -19,6 +19,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import analyzeHandler from '../api/analyze';
 import dsarHandler from '../api/dsar';
 import stripeWebhookHandler from '../api/webhooks/stripe';
+import billingCheckoutHandler from '../api/billing/checkout';
+import billingPortalHandler from '../api/billing/portal';
+import billingSeatsHandler from '../api/billing/seats';
+import assistHandler from '../api/assist';
 import { serverConfig } from '../src/lib/config';
 
 const {
@@ -101,6 +105,10 @@ const API_ROUTES = new Map<string, ApiHandler>([
   ['/api/analyze', analyzeHandler],
   ['/api/dsar', dsarHandler],
   ['/api/webhooks/stripe', stripeWebhookHandler],
+  ['/api/billing/checkout', billingCheckoutHandler],
+  ['/api/billing/portal', billingPortalHandler],
+  ['/api/billing/seats', billingSeatsHandler],
+  ['/api/assist', assistHandler],
 ]);
 
 /** Read the request body with a hard byte ceiling, so a large upload cannot exhaust memory. */

@@ -5,9 +5,9 @@
 /// for the product as a whole (DEF-067). ESIGN (15 U.S.C. §7001) requires that a person agree to
 /// do business electronically — a notice they scrolled past is not agreement.
 ///
-/// The statement is the one `src/components/shared/SignaturePad.tsx` shows, with "checking" read
-/// as "ticking" for a touch control and without the web copy's capitals. Same legal content —
-/// change one, change the other.
+/// The wording is owned by `src/content/esign-consent.json`, which the web client renders.
+/// This is an identical copy (a released app cannot read the repository), and
+/// `test/esign_consent_contract_test.dart` fails if the two drift.
 library;
 
 import 'package:flutter/material.dart';
@@ -37,6 +37,10 @@ class ESignConsent extends StatelessWidget {
       'submission. You may withdraw consent by contacting your administrator.';
 
   static const String label = 'I agree to sign electronically';
+
+  /// The wording version recorded with consent. Must equal `version` in
+  /// src/content/esign-consent.json — test/esign_consent_contract_test.dart compares them.
+  static const String version = '2026-11-25';
 
   @override
   Widget build(BuildContext context) {

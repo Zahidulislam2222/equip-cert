@@ -1,7 +1,7 @@
 # Sub-processors
 
 **Controller:** [CONTROLLER LEGAL NAME]
-**Version:** 2026-10-01
+**Version:** 2026-11-25
 **Review trigger:** before any new third party receives personal data, and at least annually
 
 GDPR Art. 28(2) requires the controller's prior authorisation before a processor engages a
@@ -26,10 +26,20 @@ route packets" is a party you did not disclose.
 | **Contabo** (shared VPS) | Hosting the origin server | Data in transit through the application process | Germany | None required |
 | **Vercel** | Alternative hosting target for the same build | Same as above, when that target is used | United States / global edge | SCCs; DPF where certified |
 | **Stripe** | Subscription payments | Billing contact and payment metadata. **Card numbers never reach our systems** | United States / EU | SCCs; DPF |
+| **OpenRouter** (OpenRouter, Inc.) and the upstream provider of the free model it routes to | The optional in-app help assistant (`/api/assist`) | The question the user types; when the question asks about their organisation, a read-only summary of that organisation's own records (counts, equipment names, due dates) | United States (OpenRouter); the upstream provider's location depends on the model | **Not yet established** — see below |
 
-**Stripe is not currently configured.** No payment data is processed today. It is listed because
-the integration exists in the codebase and would activate on configuration — disclosing it only
-after switching it on would be disclosing it too late.
+**Stripe runs in TEST mode only (2026-11-25).** Checkout uses Stripe's test environment; no real
+card is charged and no live key is accepted (`STRIPE_ALLOW_LIVE_KEYS` gate). Switching to live mode
+is a sub-processor activation and needs this list and the privacy policy reviewed first.
+
+**OpenRouter is new on 2026-11-25 and is NOT cleared for real customer data.** The assistant calls
+only `:free` models (enforced in `src/lib/assist/core.ts`). Free endpoints may be served by
+providers that log or train on prompts, and no data processing agreement, retention setting or
+transfer mechanism has been verified for this account. The assistant therefore tells users not to
+type personal or confidential details, sends no names or email addresses of its own accord, and
+the privacy policy says the same. **Release blocker for real customers:** sign OpenRouter's DPA (or
+replace the provider), restrict routing to providers that do not retain prompts, and record the
+transfer basis here. Owner action, tracked in `TASKS.md`.
 
 **The AI provider is configurable.** `AI_PROVIDER` selects Google, OpenAI or Anthropic. Google is
 the configured default. Changing it changes who receives inspection photographs, so it is a
@@ -65,7 +75,7 @@ missing — the policy named Nominatim while this document did not.
 | `https://nominatim.openstreetmap.org` | OpenStreetMap Foundation — Nominatim |
 | `https://api.pwnedpasswords.com` | Have I Been Pwned — Pwned Passwords |
 
-Server-side calls — the AI provider from `/api/analyze`, Supabase from the API handlers — are
+Server-side calls — the AI provider from `/api/analyze`, OpenRouter from `/api/assist`, Stripe from the billing handlers, Supabase from the API handlers — are
 not in the browser's policy and are covered by the sub-processor table above.
 
 ---

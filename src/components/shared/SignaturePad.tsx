@@ -1,5 +1,6 @@
 'use client';
 
+import esignConsent from '@/content/esign-consent.json';
 import { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Button } from '@/components/ui/button';
@@ -65,20 +66,17 @@ export function SignaturePad({ onSave, savedSignature, esignConsented }: Signatu
       {/* ESIGN Act consent — must be affirmative before signing */}
       {!hasConsented && (
         <div className="rounded-lg border border-primary/20 bg-primary-light p-4 space-y-3">
-          <p className="text-sm font-medium text-foreground">Electronic Signature Consent</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            By checking this box, you AFFIRMATIVELY CONSENT to sign this equipment inspection
-            record electronically under the ESIGN Act (15 U.S.C. &sect;7001). Your electronic
-            signature has the same legal effect as a handwritten signature. Signed records cannot
-            be modified after submission. You may withdraw consent by contacting your administrator.
-          </p>
-          <label className="flex items-center gap-2 cursor-pointer">
+          {/* Wording and version: src/content/esign-consent.json — the version is what the
+              server records as evidence of what was shown (DEF-074). */}
+          <p className="text-sm font-medium text-foreground">{esignConsent.title}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{esignConsent.statement}</p>
+          <label className="flex min-h-6 items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               onChange={(e) => setHasConsented(e.target.checked)}
-              className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+              className="h-5 w-5 rounded border-input text-primary focus:ring-primary"
             />
-            <span className="text-sm font-medium text-foreground">I agree to sign electronically</span>
+            <span className="text-sm font-medium text-foreground">{esignConsent.label}</span>
           </label>
         </div>
       )}

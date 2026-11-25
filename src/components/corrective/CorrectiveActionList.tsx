@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle, Clock, Loader2, User } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Row shape from the generated schema; see src/lib/db.ts.
@@ -24,34 +23,47 @@ const statusConfig: Record<string, { icon: typeof AlertTriangle; color: string; 
   overdue: { icon: AlertTriangle, color: 'text-red-600', label: 'Overdue' },
 };
 
+/** All corrective actions for one organisation, newest first. */
+async function loadCorrectiveActions(organizationId: string): Promise<CorrectiveAction[]> {
+  const { data, error } = await supabase
+    .from('corrective_actions')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export function CorrectiveActionList() {
   const { organization, profile } = useAuth();
   const [actions, setActions] = useState<CorrectiveAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
 
-  useEffect(() => {
-    fetchActions();
-  }, [organization]);
+  const organizationId = organization?.id ?? null;
 
-  const fetchActions = async () => {
-    if (!organization) return;
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('corrective_actions')
-        .select('*')
-        .eq('organization_id', organization.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      if (data) setActions(data);
-    } catch (err) {
-      console.error('Error fetching corrective actions:', err);
-    } finally {
-      setIsLoading(false);
-    }
+  // State is set in the loader's callback, never synchronously in an effect body
+  // (react-hooks/set-state-in-effect); `active` drops a response for a tenant we have left.
+  const refresh = (isActive: () => boolean = () => true) => {
+    if (!organizationId) return;
+    loadCorrectiveActions(organizationId)
+      .then((rows) => {
+        if (isActive()) setActions(rows);
+      })
+      .catch((err) => console.error('Error fetching corrective actions:', err))
+      .finally(() => {
+        if (isActive()) setIsLoading(false);
+      });
   };
+
+  useEffect(() => {
+    let active = true;
+    refresh(() => active);
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when the tenant changes
+  }, [organizationId]);
 
   const updateStatus = async (id: string, newStatus: CorrectiveStatus) => {
     const { error } = await supabase
@@ -65,7 +77,7 @@ export function CorrectiveActionList() {
       })
       .eq('id', id);
 
-    if (!error) fetchActions();
+    if (!error) refresh();
   };
 
   const filtered = filter === 'all' ? actions : actions.filter((a) => a.status === filter);

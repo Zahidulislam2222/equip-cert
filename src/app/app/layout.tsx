@@ -2,6 +2,7 @@
 
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { HelpAssistant } from '@/components/shared/HelpAssistant';
 
 export default function AuthenticatedLayout({
   children,
@@ -11,6 +12,7 @@ export default function AuthenticatedLayout({
   return (
     <ProtectedRoute>
       <AppLayout>{children}</AppLayout>
+      <HelpAssistant />
     </ProtectedRoute>
   );
 }

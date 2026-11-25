@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import { Loader2 } from 'lucide-react';
+import { OnboardingPanel } from './OnboardingPanel';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -30,6 +31,10 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (!user) return null;
+
+  // Signed in but in no organisation: every app screen would be empty or erroring, so finish
+  // onboarding first (join with an invitation, or start an organisation).
+  if (!profile) return <OnboardingPanel />;
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
     return (

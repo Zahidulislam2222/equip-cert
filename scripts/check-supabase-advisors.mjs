@@ -45,6 +45,35 @@ const ACCEPTED = {
 };
 
 /**
+ * Findings accepted for NAMED entities only, never for the whole lint — a new function that trips
+ * the same lint still fails. Each entry carries its reason.
+ *
+ * `authenticated_security_definer_function_executable` (lint 0029): a SECURITY DEFINER function in
+ * an exposed schema that signed-in users may call. These four ARE the RPC surface the clients call
+ * (supabase.rpc), so they must be in `public` and executable by `authenticated`; moving them or
+ * revoking EXECUTE breaks signup and invitations. Each does its own authorization first — that is
+ * what the lint asks you to confirm — and runs with `SET search_path = ''`
+ * (supabase/migrations/20261125000100_tenancy_invites_consent.sql, proved by e2e/local/tenancy.test.mjs):
+ */
+const ACCEPTED_ENTITIES = {
+  security: {
+    authenticated_security_definer_function_executable: {
+      provision_account: 'requires auth.uid(); only ever creates or returns the organisation of the caller',
+      create_invite: 'refuses unless app.is_admin() in the org of the caller; cannot invite an admin; validity bounded',
+      revoke_invite: 'refuses unless app.is_admin(); updates only invites in the org of the caller',
+      accept_invite: 'requires auth.uid() and no existing profile; token checked by SHA-256 hash, row-locked, single use',
+    },
+  },
+  performance: {},
+};
+
+// Schema-qualified: a same-named function in another schema is not covered. (Overloads cannot be
+// told apart from the advisor output; a new overload must be reviewed when the migration adds it.)
+const entityReason = (finding) =>
+  finding.metadata?.schema === 'public' ? ACCEPTED_ENTITIES[type]?.[finding.name]?.[finding.metadata?.name] : undefined;
+const isAccepted = (finding) => accepted.has(finding.name) || Boolean(entityReason(finding));
+
+/**
  * Performance advice is graded, and only ERROR blocks. INFO findings on a project this size
  * are things like an unused index on a table with fifty rows; treating them as failures would
  * train everyone to ignore the gate.
@@ -114,7 +143,7 @@ const accepted = ACCEPTED[type];
 const blocking = BLOCKING_LEVELS[type];
 
 const failures = results.filter((finding) => {
-  if (accepted.has(finding.name)) return false;
+  if (isAccepted(finding)) return false;
   if (blocking && !blocking.has(finding.level)) return false;
   return true;
 });
@@ -122,8 +151,8 @@ const failures = results.filter((finding) => {
 for (const finding of results) {
   const verdict = failures.includes(finding)
     ? 'FAIL'
-    : accepted.has(finding.name)
-      ? 'accepted'
+    : isAccepted(finding)
+      ? `accepted${entityReason(finding) ? ` (${entityReason(finding)})` : ''}`
       : 'below threshold';
   console.log(`  [${finding.level}] ${finding.name} — ${verdict}`);
   if (finding.metadata?.name) console.log(`      entity: ${finding.metadata.name}`);

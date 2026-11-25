@@ -1,5 +1,6 @@
 'use client';
 
+import { dataUrlToBlob } from '@/lib/data-url';
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -29,7 +30,10 @@ import { queueSubmission } from "@/lib/offline";
 import { AiDisclosurePanel } from "@/components/shared/AiDisclosure";
 import { isAiProvenance, toProvenanceColumns, type AiProvenance } from "@/lib/compliance/ai-act";
 import { supabase as supabaseClient } from "@/lib/supabase";
+import { recordEsignConsent } from "@/lib/auth";
+import esignConsent from "@/content/esign-consent.json";
 import { toast } from "sonner";
+import { canAccess } from "@/lib/plans";
 
 interface InspectionScreenProps {
   isAiMode: boolean;
@@ -76,8 +80,9 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
   const [aiProvenance, setAiProvenance] = useState<AiProvenance | null>(null);
 
   // --- 1. FETCH FROM CONTENTFUL ---
+  // Callers set isSyncing(true) themselves: the manual path starts with it already true (initial
+  // state), and setting state synchronously inside an effect cascades a render.
   const fetchChecklistFromContentful = async (nameToSearch: string) => {
-    setIsSyncing(true);
     try {
       const response = await contentfulClient.getEntries({
         content_type: 'checklist',
@@ -117,10 +122,18 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
   };
 
   // --- 2. INITIAL LOAD ---
+  // Deferred to a microtask so no state is set synchronously in the effect body
+  // (react-hooks/set-state-in-effect); `active` stops a load for an unmounted screen.
   useEffect(() => {
-    if (!isAiMode) {
-      fetchChecklistFromContentful("Caterpillar X500");
-    }
+    if (isAiMode) return;
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void fetchChecklistFromContentful(equipmentName);
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per mode
   }, [isAiMode]);
 
   // --- 3. AI ANALYSIS ---
@@ -154,6 +167,7 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
             setAiProvenance(data.provenance);
           }
           setEquipmentName(data.equipmentName);
+          setIsSyncing(true);
           await fetchChecklistFromContentful(data.equipmentName);
         } else {
           throw new Error("AI did not return equipment name.");
@@ -201,7 +215,11 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
 
   const allCompleted = checklist.length > 0 && checklist.every((item) => item.status !== "pending");
   const hasFailures = checklist.some((item) => item.status === "fail");
-  const readyToSubmit = allCompleted && signatureDataUrl;
+  // Signatures are a paid-plan feature, enforced by the database (enforce_plan_limits rejects a
+  // signature_url on the free plan). Requiring one on the free plan meant a free organisation could
+  // not file a single inspection (DEF-079): free records are filed unsigned, and say so.
+  const signaturesAllowed = canAccess(organization?.plan ?? 'free', 'signatures');
+  const readyToSubmit = allCompleted && (!signaturesAllowed || !!signatureDataUrl);
 
   // --- 6. SAVE ---
   const handleSave = async () => {
@@ -214,16 +232,21 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
       const orgId = organization?.id;
       if (!orgId) throw new Error('No organization on this session; cannot file an inspection.');
 
+      // Decoded locally: fetch() of a data: URL is blocked by the production CSP (connect-src).
+      const sigBlob = signatureDataUrl ? dataUrlToBlob(signatureDataUrl) : null;
+      const consentVersion = sigBlob ? esignConsent.version : null;
+      const offline = !navigator.onLine;
+
+      // Online: consent evidence is recorded BEFORE the signed record exists (DEF-074), then the
+      // evidence is uploaded. Offline: nothing can be uploaded yet, so the raw evidence is queued
+      // and the same three steps run at sync time (DEF-078 — uploading first made the queue
+      // unreachable, because the upload threw before the offline branch).
       let uploadedImagePath: string | null = null;
       let uploadedSignaturePath: string | null = null;
-
-      if (photoBlob) {
-        uploadedImagePath = await uploadEvidence('inspection', orgId, photoBlob);
-      }
-
-      if (signatureDataUrl) {
-        const sigBlob = await fetch(signatureDataUrl).then((r) => r.blob());
-        uploadedSignaturePath = await uploadEvidence('signature', orgId, sigBlob);
+      if (!offline) {
+        if (consentVersion) await recordEsignConsent(consentVersion);
+        if (photoBlob) uploadedImagePath = await uploadEvidence('inspection', orgId, photoBlob);
+        if (sigBlob) uploadedSignaturePath = await uploadEvidence('signature', orgId, sigBlob);
       }
 
       const payload: InspectionInsert = {
@@ -256,9 +279,15 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
         },
       };
 
-      if (!navigator.onLine) {
-        // Queue for offline sync
-        await queueSubmission({ payload, photoBlob, timestamp: Date.now() });
+      if (offline) {
+        // Queue for offline sync — evidence travels as blobs and is uploaded by the sync.
+        await queueSubmission({
+          payload,
+          photoBlob,
+          signatureBlob: sigBlob,
+          esignConsentVersion: consentVersion,
+          timestamp: Date.now(),
+        });
         toast.info("Saved offline — will sync when back online");
         onComplete();
         return;
@@ -286,7 +315,7 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-4 border-b border-border bg-card px-4 py-4">
-        <button onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted active:scale-95">
+        <button onClick={onBack} aria-label="Back" className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted active:scale-95">
           <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
         <div className="flex-1">
@@ -379,6 +408,8 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
                       <div className="flex gap-2">
                         <Button
                           onClick={() => updateStatus(item.id, "pass")}
+                          aria-label={`Pass: ${item.question}`}
+                          aria-pressed={item.status === "pass"}
                           variant={item.status === "pass" ? "default" : "outline"}
                           className={cn("min-w-[72px]", item.status === "pass" && "bg-green-600 hover:bg-green-700")}
                         >
@@ -386,6 +417,8 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
                         </Button>
                         <Button
                           onClick={() => updateStatus(item.id, "fail")}
+                          aria-label={`Fail: ${item.question}`}
+                          aria-pressed={item.status === "fail"}
                           variant={item.status === "fail" ? "destructive" : "outline"}
                           className="min-w-[72px]"
                         >
@@ -402,7 +435,13 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
 
         {/* Signature — show after checklist is complete */}
         <AnimatePresence>
-          {allCompleted && (
+          {allCompleted && !signaturesAllowed && (
+            <p className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
+              Electronic signatures are part of the Pro plan. On your current plan this inspection is filed
+              unsigned; an administrator can upgrade in Settings.
+            </p>
+          )}
+          {allCompleted && signaturesAllowed && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -431,10 +470,10 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
             <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
           ) : !allCompleted ? (
             "Complete All Checklist Items"
-          ) : !signatureDataUrl ? (
+          ) : signaturesAllowed && !signatureDataUrl ? (
             "Add Signature to Submit"
           ) : (
-            <><CheckCircle className="h-5 w-5" /> Sign &amp; Submit Inspection</>
+            <><CheckCircle className="h-5 w-5" /> {signaturesAllowed ? <>Sign &amp; Submit Inspection</> : 'Submit Inspection'}</>
           )}
         </Button>
       </div>

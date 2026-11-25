@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { signIn, signInWithMagicLink } from '@/lib/auth';
+import { readInviteFromLocation, rememberPendingInvite, signIn, signInWithMagicLink, whenSignedIn } from '@/lib/auth';
 import { Loader2, ShieldCheck, ArrowRight, Mail, Sparkles } from 'lucide-react';
 import { config } from '@/lib/config';
 import Link from 'next/link';
@@ -15,6 +15,16 @@ export default function LoginPage() {
   const [isMagicLink, setIsMagicLink] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [error, setError] = useState('');
+
+  // An existing account opening an invitation (/auth/login#invite=...) parks the token; the app
+  // redeems it on the first signed-in load. A side effect only — nothing here sets state.
+  useEffect(() => {
+    const token = readInviteFromLocation();
+    if (token) rememberPendingInvite(token);
+  }, []);
+
+  // Arriving already signed in — typically from the email-confirmation link — goes straight on.
+  useEffect(() => whenSignedIn(() => window.location.replace('/app/dashboard')), []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,9 +166,11 @@ export default function LoginPage() {
                 </AnimatePresence>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Email</label>
+                  <label htmlFor="login-email" className="text-sm font-medium text-foreground">Email</label>
                   <input
+                    id="login-email"
                     type="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -169,9 +181,11 @@ export default function LoginPage() {
 
                 {!isMagicLink && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Password</label>
+                    <label htmlFor="login-password" className="text-sm font-medium text-foreground">Password</label>
                     <input
+                      id="login-password"
                       type="password"
+                      autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
