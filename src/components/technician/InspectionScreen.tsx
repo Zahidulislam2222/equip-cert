@@ -103,8 +103,11 @@ export function InspectionScreen({ isAiMode, onBack, onComplete }: InspectionScr
     const request = ++checklistRequest.current;
     let entries: CmsChecklistEntry[] = [];
     try {
-      const response = await contentfulClient.getEntries({ content_type: 'checklist', include: 2 });
-      entries = response.items as unknown as CmsChecklistEntry[];
+      // No client = Contentful not configured: same as unreachable, the built-in lists apply.
+      if (contentfulClient) {
+        const response = await contentfulClient.getEntries({ content_type: 'checklist', include: 2 });
+        entries = response.items as unknown as CmsChecklistEntry[];
+      }
     } catch (error) {
       // The CMS being unreachable must not stop an inspection: the built-in checklists still apply.
       console.error("Contentful Error:", error);

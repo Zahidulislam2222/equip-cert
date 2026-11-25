@@ -53,8 +53,9 @@ export const config = {
 
   // Contentful
   contentful: {
-    spaceId: process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID!,
-    accessToken: process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN!,
+    // Optional: without them the inspection screen uses the built-in checklists (src/lib/contentful.ts).
+    spaceId: process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID ?? '',
+    accessToken: process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN ?? '',
   },
 
   // No client-side Stripe key: checkout and the portal are server-created redirects, so the
